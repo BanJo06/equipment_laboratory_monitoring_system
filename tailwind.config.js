@@ -4,11 +4,22 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontFamily: {
+        inter: ["Inter_400Regular"],
+        "inter-bold": ["Inter_700Bold"],
+      },
+      lineHeight: {
+        "bigger-text-line": "1.19",
+      },
       colors: {
         // Global Background
         bgPrimary: {
-          light: "#FFFFFF",
+          light: "#D3D3D3",
           dark: "#121212",
+        },
+        primary: {
+          light: "#2567CA",
+          dark: "#5F23A6",
         },
 
         // Card Backgrounds
@@ -24,11 +35,11 @@ module.exports = {
 
         // Text Colors
         textPrimary: {
-          light: "#392F46",
+          light: "#112747",
           dark: "#9CA3AF",
         },
         textSecondary: {
-          light: "#392F46",
+          light: "#486085",
           dark: "#9CA3AF",
         },
 
@@ -38,38 +49,25 @@ module.exports = {
         },
 
         textHighlight: {
-          light: "#8938E9",
+          light: "#2567CA",
           dark: "#9CA3AF",
         },
 
-        // Accent
-        accent: {
-          light: "#8938E9",
-          dark: "#461C78",
-        },
-
-        button: {
-          light: "#8938E9",
-          dark: "#5F23A6",
-        },
         textButton: {
           light: "#FFFFFF",
           dark: "#FFFFFF",
         },
 
-        borderButton: {
-          light: "#392F46",
+        borderStrong: {
+          light: "#6684B0",
           dark: "#9CA3AF",
         },
 
         search: {
-          light: "#392F46",
+          light: "#B8B8B8",
           dark: "#9CA3AF",
         },
-        textSearch: {
-          light: "#FFFFFF",
-          dark: "#9CA3AF",
-        },
+
         bgModal: {
           light: "#FFFFFF",
           dark: "#2A2A2A",
