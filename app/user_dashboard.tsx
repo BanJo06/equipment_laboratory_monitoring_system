@@ -8,8 +8,16 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
+const StartSessionCard = ({ children, className = "" }) => (
+  <View
+    className={`bg-white rounded-lg px-8 pt-8 pb-6 mb-6 shadow-sm ${className}`}
+  >
+    {children}
+  </View>
+);
+
 const Card = ({ children, className = "" }) => (
-  <View className={`bg-white rounded-2xl p-5 mb-5 shadow-sm ${className}`}>
+  <View className={`bg-white rounded-lg p-8 mb-6 shadow-sm ${className}`}>
     {children}
   </View>
 );
@@ -18,14 +26,16 @@ const Card = ({ children, className = "" }) => (
 const BlueButton = ({ children, onPress = () => {}, className = "" }) => (
   <TouchableOpacity
     onPress={onPress}
-    className={`bg-blue-700 rounded-lg py-2.5 px-4 items-center justify-center ${className}`}
+    className={`bg-mainColor-light rounded-md py-2.5 px-4 items-center justify-center ${className}`}
   >
     {children}
   </TouchableOpacity>
 );
 
 const BlueButtonText = ({ children, className = "" }) => (
-  <Text className={`text-white font-semibold text-base ${className}`}>
+  <Text
+    className={`text-white font-bold font-inter-bold text-[16px] ${className}`}
+  >
     {children}
   </Text>
 );
@@ -46,22 +56,34 @@ const OutlineButtonText = ({ children }) => (
 
 const DropdownMock = ({ children, className = "" }) => (
   <View
-    className={`bg-gray-200 rounded-lg p-3 flex-row justify-between items-center mt-2 ${className}`}
+    className={`bg-[#EBEDF0] rounded-lg p-3 flex-row justify-between items-center mt-2 ${className}`}
+  >
+    {children}
+  </View>
+);
+
+const InsideCardDropdownMock = ({ children, className = "" }) => (
+  <View
+    className={`bg-white rounded-lg p-3 flex-row justify-between items-center mt-2 ${className}`}
   >
     {children}
   </View>
 );
 
 const SectionTitle = ({ children }) => (
-  <Text className="text-xl font-bold text-gray-800 ml-3">{children}</Text>
+  <Text className="text-[28px] font-inter-bold text-textPrimary-light">
+    {children}
+  </Text>
 );
 
 const LabelText = ({ children }) => (
-  <Text className="text-gray-600 font-medium mb-1">{children}</Text>
+  <Text className="text-textPrimary-light font-inter text-[16px]">
+    {children}
+  </Text>
 );
 
 const StatCard = ({ children }) => (
-  <View className="bg-white rounded-2xl p-5 mb-4 w-[48%] shadow-sm justify-between min-h-[140px]">
+  <View className="bg-white rounded-2xl p-4 mb-6 w-[48%] shadow-sm min-h-[140px] max-h-[302px]">
     {children}
   </View>
 );
@@ -73,28 +95,30 @@ const RadioOption = ({ label, selected }) => (
     >
       {selected && <View className="h-2 w-2 rounded-full bg-white" />}
     </View>
-    <Text className="text-gray-700">{label}</Text>
+    <Text className="text-textPrimary-light font-inter text-[14px]">
+      {label}
+    </Text>
   </View>
 );
 
 export default function user_dashboard() {
   return (
-    <View className="flex-1 bg-gray-100">
+    <View className="flex-1 bg-bgPrimary-light">
       <StatusBar style="dark" />
-      <ScrollView className="flex-1 p-4 pt-12">
+      <ScrollView className="flex-1 p-4 pt-8">
         {/* --- MAIN GRID CONTAINER --- */}
         <View className="flex-row items-start">
           {/* =======================
               LEFT COLUMN 
              ======================= */}
-          <View className="flex-1 mr-4">
+          <View className="flex-1 mr-6">
             {/* 1. Hello Juan */}
             <Card className="flex-row justify-between items-center">
-              <View>
-                <Text className="text-2xl font-bold text-gray-900">
+              <View className="gap-2">
+                <Text className="text-[34px] font-inter-bold leading-bigger-text-line text-textPrimary-light">
                   Hello, Juan!
                 </Text>
-                <Text className="text-gray-500 mt-1">
+                <Text className="text-[16px] font-inter leading-normal text-textSecondary-light">
                   Ready to use laboratory equipment
                 </Text>
               </View>
@@ -104,15 +128,15 @@ export default function user_dashboard() {
             </Card>
 
             {/* 2. Start Session */}
-            <Card>
+            <StartSessionCard>
               <View className="flex-row justify-between items-center mb-4">
-                <View className="flex-row items-center">
-                  <View className="bg-blue-100 p-2 rounded-full">
-                    <Feather name="clock" size={24} color="#1d4ed8" />
+                <View className="flex-row items-center gap-4">
+                  <View className="bg-blue-100 p-[14px] rounded-full">
+                    <Feather name="clock" size={36} color="#1d4ed8" />
                   </View>
-                  <View>
+                  <View className="gap-[6px]">
                     <SectionTitle>Start Session</SectionTitle>
-                    <Text className="text-gray-500 ml-3">
+                    <Text className="text-[16px] font-inter leading-normal text-textSecondary-light">
                       Begin using equipment
                     </Text>
                   </View>
@@ -126,24 +150,26 @@ export default function user_dashboard() {
                 <View className="flex-row items-center mb-1">
                   <FontAwesome5
                     name="flask"
-                    size={14}
-                    color="#4b5563"
+                    size={24}
+                    color="#112747"
                     style={{ marginRight: 8 }}
                   />
                   <LabelText>Select Equipment</LabelText>
                 </View>
                 <DropdownMock>
-                  <Text className="text-gray-600">Choose equipment</Text>
+                  <Text className="text-textPrimary-light font-inter text-[14px]">
+                    Choose equipment
+                  </Text>
                   <Feather name="chevron-down" size={20} color="gray" />
                 </DropdownMock>
               </View>
 
-              <View className="mb-6">
+              <View className="mb-6 bg-[#DADFE5] p-4 rounded-[10px]">
                 <View className="flex-row items-center mb-2">
                   <Feather
                     name="clock"
-                    size={14}
-                    color="#4b5563"
+                    size={24}
+                    color="#112747"
                     style={{ marginRight: 8 }}
                   />
                   <LabelText>Start Time</LabelText>
@@ -152,10 +178,12 @@ export default function user_dashboard() {
                   <RadioOption label="Dropdown" selected={true} />
                   <RadioOption label="Manual Entry" selected={false} />
                 </View>
-                <DropdownMock>
-                  <Text className="text-gray-800">11:45 AM</Text>
+                <InsideCardDropdownMock>
+                  <Text className="text-textPrimary-light font-inter text-[14px]">
+                    11:45 AM
+                  </Text>
                   <Feather name="chevron-down" size={20} color="gray" />
-                </DropdownMock>
+                </InsideCardDropdownMock>
               </View>
 
               <BlueButton className="w-full py-3">
@@ -163,40 +191,60 @@ export default function user_dashboard() {
                   Start Using Equipment
                 </BlueButtonText>
               </BlueButton>
-            </Card>
+            </StartSessionCard>
 
             {/* 3. Available Equipments (Moved to Left Column) */}
             <Card>
-              <Text className="text-xl font-bold text-gray-900 mb-4">
+              <Text className="text-[28px] font-inter-bold text-textPrimary-light mb-4">
                 Available Equipments
               </Text>
 
               {/* Table Header */}
-              <View className="flex-row border-b border-gray-300 pb-2 mb-2">
-                <Text className="flex-1 font-semibold text-gray-700">Item</Text>
-                <Text className="w-1/4 text-center font-semibold text-gray-700">
+              <View className="flex-row border-b border-[#6684B0] pb-2 mb-2">
+                <Text className="flex-1 font-inter-bold text-textPrimary-light">
+                  Item
+                </Text>
+                <Text className="w-1/4 text-center font-inter-bold text-textPrimary-light">
                   Qty
                 </Text>
-                <Text className="w-1/3 text-right font-semibold text-gray-700">
+                <Text className="w-1/3 text-right font-inter-bold text-textPrimary-light">
                   Last Used
                 </Text>
               </View>
 
               {/* Table Rows */}
-              <View className="flex-row border-b border-gray-200 py-3">
-                <Text className="flex-1 text-gray-800">Microscope A</Text>
-                <Text className="w-1/4 text-center text-gray-800">1</Text>
-                <Text className="w-1/3 text-right text-gray-600">Jan 2</Text>
+              <View className="flex-row border-b border-[#DADFE5] py-2">
+                <Text className="flex-1 font-inter text-textPrimary-light">
+                  Microscope A
+                </Text>
+                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
+                  1
+                </Text>
+                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
+                  Jan 2
+                </Text>
               </View>
-              <View className="flex-row border-b border-gray-200 py-3">
-                <Text className="flex-1 text-gray-800">PCR Machine</Text>
-                <Text className="w-1/4 text-center text-gray-800">3</Text>
-                <Text className="w-1/3 text-right text-gray-600">Dec 10</Text>
+              <View className="flex-row border-b border-[#DADFE5] py-2">
+                <Text className="flex-1 font-inter text-textPrimary-light">
+                  PCR Machine
+                </Text>
+                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
+                  3
+                </Text>
+                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
+                  Dec 10
+                </Text>
               </View>
-              <View className="flex-row py-3">
-                <Text className="flex-1 text-gray-800">Incubator</Text>
-                <Text className="w-1/4 text-center text-gray-800">1</Text>
-                <Text className="w-1/3 text-right text-gray-600">Jan 5</Text>
+              <View className="flex-row py-2">
+                <Text className="flex-1 font-inter text-textPrimary-light">
+                  Incubator
+                </Text>
+                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
+                  1
+                </Text>
+                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
+                  Jan 5
+                </Text>
               </View>
             </Card>
           </View>
@@ -207,18 +255,19 @@ export default function user_dashboard() {
           <View className="flex-1">
             {/* 1. Active Sessions */}
             <Card>
-              <View className="flex-row justify-between items-center mb-2">
-                <View className="flex-row items-center">
-                  <View className="bg-blue-100 p-2 rounded-full">
+              {/* Header Section (Stays Fixed) */}
+              <View className="flex-row justify-between items-center mb-4">
+                <View className="flex-row items-center gap-4">
+                  <View className="bg-blue-100 p-[14px] rounded-full">
                     <MaterialCommunityIcons
                       name="account-clock-outline"
-                      size={24}
+                      size={36}
                       color="#1d4ed8"
                     />
                   </View>
-                  <View>
+                  <View className="gap-[6px]">
                     <SectionTitle>Active Sessions</SectionTitle>
-                    <Text className="text-gray-500 ml-3">
+                    <Text className="text-[16px] font-inter text-textSecondary-light">
                       2 equipments in use
                     </Text>
                   </View>
@@ -228,130 +277,155 @@ export default function user_dashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* Active Item 1: Microscope A */}
-              <View className="bg-gray-200 rounded-xl p-4 mb-4">
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="microscope"
-                      size={20}
-                      color="#1d4ed8"
-                    />
-                    <Text className="font-semibold text-gray-800 ml-2 text-lg">
-                      Microscope A
-                    </Text>
+              {/* Scrollable Area for Items */}
+              {/* Added h-96 (approx 384px) to force scrolling. Adjust height as needed. */}
+              <ScrollView
+                className="h-[492px]"
+                nestedScrollEnabled={true}
+                // showsVerticalScrollIndicator={true}
+              >
+                {/* Active Item 1: Microscope A */}
+                <View className="bg-gray-200 rounded-xl p-4 mb-4">
+                  <View className="flex-row justify-between items-start mb-2">
+                    <View className="flex-row items-center">
+                      <MaterialCommunityIcons
+                        name="microscope"
+                        size={20}
+                        color="#1d4ed8"
+                      />
+                      <Text className="font-inter text-textPrimary-light ml-2 text-[16px]">
+                        Microscope A
+                      </Text>
+                    </View>
+                    <OutlineButton>
+                      <Ionicons
+                        name="qr-code-outline"
+                        size={16}
+                        color="#1d4ed8"
+                      />
+                      <OutlineButtonText>QR</OutlineButtonText>
+                    </OutlineButton>
                   </View>
-                  <OutlineButton>
-                    <Ionicons
-                      name="qr-code-outline"
-                      size={16}
-                      color="#1d4ed8"
-                    />
-                    <OutlineButtonText>QR</OutlineButtonText>
-                  </OutlineButton>
+
+                  <View className="bg-white flex-row items-center rounded-xl px-4 py-3 self-start shadow-sm border border-gray-100 mb-6">
+                    <Feather name="clock" size={24} color="#112747" />
+                    <Text className="text-textPrimary-light font-inter ml-2 mr-4 text-[14px]">
+                      Started: 8:00 AM
+                    </Text>
+                    <View className="bg-[#DADFE5] rounded-[4px] px-3 py-1">
+                      <Text className="text-textPrimary-light font-inter text-[14px]">
+                        3h 55m
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View>
+                    <View className="flex-row items-center mb-2">
+                      <Feather
+                        name="clock"
+                        size={24}
+                        color="#112747"
+                        style={{ marginRight: 8 }}
+                      />
+                      <LabelText>End Time</LabelText>
+                    </View>
+                    <View className="flex-row mb-2">
+                      <RadioOption label="Dropdown" selected={true} />
+                      <RadioOption label="Manual" selected={false} />
+                    </View>
+                    <View className="flex-row">
+                      <InsideCardDropdownMock className="flex-1 mr-2 mt-0 bg-gray-300">
+                        <Text className="font-inter text-textPrimary-light">
+                          11:45 AM
+                        </Text>
+                        <Feather name="chevron-down" size={20} color="gray" />
+                      </InsideCardDropdownMock>
+                      <BlueButton className="px-6 bg-blue-700">
+                        <BlueButtonText>Stop</BlueButtonText>
+                      </BlueButton>
+                    </View>
+                  </View>
                 </View>
 
-                <View className="flex-row items-center mb-4">
-                  <Feather name="clock" size={14} color="gray" />
-                  <Text className="text-gray-600 ml-2">Started: 8:00 AM</Text>
-                  <View className="bg-gray-300 rounded px-2 py-0.5 ml-3">
-                    <Text className="text-gray-700 text-xs font-medium">
-                      3h 55m
-                    </Text>
+                {/* Active Item 2: PCR Machine */}
+                <View className="bg-gray-200 rounded-xl p-4 mb-2">
+                  <View className="flex-row justify-between items-start mb-2">
+                    <View className="flex-row items-center">
+                      <MaterialCommunityIcons
+                        name="printer-3d"
+                        size={20}
+                        color="#1d4ed8"
+                      />
+                      <Text className="font-inter text-textPrimary-light ml-2 text-[16px]">
+                        PCR Machine
+                      </Text>
+                    </View>
+                    <OutlineButton>
+                      <Ionicons
+                        name="qr-code-outline"
+                        size={16}
+                        color="#1d4ed8"
+                      />
+                      <OutlineButtonText>QR</OutlineButtonText>
+                    </OutlineButton>
                   </View>
-                </View>
 
-                <View>
-                  <View className="flex-row items-center mb-2">
-                    <Feather
-                      name="clock"
-                      size={14}
-                      color="#4b5563"
-                      style={{ marginRight: 8 }}
-                    />
-                    <LabelText>End Time</LabelText>
-                  </View>
-                  <View className="flex-row mb-2">
-                    <RadioOption label="Dropdown" selected={true} />
-                    <RadioOption label="Manual" selected={false} />
-                  </View>
-                  <View className="flex-row">
-                    <DropdownMock className="flex-1 mr-2 mt-0 bg-gray-300">
-                      <Text className="text-gray-800">11:45 AM</Text>
-                      <Feather name="chevron-down" size={20} color="gray" />
-                    </DropdownMock>
-                    <BlueButton className="px-6 bg-blue-700">
-                      <BlueButtonText>Stop</BlueButtonText>
-                    </BlueButton>
-                  </View>
-                </View>
-              </View>
-
-              {/* Active Item 2: PCR Machine */}
-              <View className="bg-gray-200 rounded-xl p-4">
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="printer-3d"
-                      size={20}
-                      color="#1d4ed8"
-                    />
-                    <Text className="font-semibold text-gray-800 ml-2 text-lg">
-                      PCR Machine
+                  <View className="bg-white flex-row items-center rounded-xl px-4 py-3 self-start shadow-sm border border-gray-100 mb-6">
+                    <Feather name="clock" size={24} color="#112747" />
+                    <Text className="text-textPrimary-light font-inter ml-2 mr-4 text-[14px]">
+                      Started: 9:00 AM
                     </Text>
-                  </View>
-                  <OutlineButton>
-                    <Ionicons
-                      name="qr-code-outline"
-                      size={16}
-                      color="#1d4ed8"
-                    />
-                    <OutlineButtonText>QR</OutlineButtonText>
-                  </OutlineButton>
-                </View>
-                <View className="flex-row items-center">
-                  <Feather name="clock" size={14} color="gray" />
-                  <Text className="text-gray-600 ml-2">Started: 9:00 AM</Text>
-                  <View className="bg-gray-300 rounded px-2 py-0.5 ml-3">
-                    <Text className="text-gray-700 text-xs font-medium">
-                      2h 55m
-                    </Text>
+                    <View className="bg-[#DADFE5] rounded-[4px] px-3 py-1">
+                      <Text className="text-textPrimary-light font-inter text-[14px]">
+                        2h 55m
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
+              </ScrollView>
             </Card>
 
             {/* 4. Small Stats Grid (Moved to Right Column) */}
             <View className="flex-row flex-wrap justify-between">
               <StatCard>
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
                   My Active
                 </Text>
-                <Text className="text-3xl font-bold text-blue-700 mt-2">2</Text>
+                <Text className="text-[20px] font-inter text-textSecondary-light">
+                  2
+                </Text>
               </StatCard>
 
               <StatCard>
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
                   Date/Time
                 </Text>
                 <View className="mt-2">
-                  <Text className="text-gray-700 text-base">Jan 10, 2026</Text>
-                  <Text className="text-gray-500 text-sm mt-1">11:15 AM</Text>
+                  <Text className="text-[20px] font-inter text-textSecondary-light">
+                    Jan 10, 2026
+                  </Text>
+                  <Text className="text-[20px] font-inter text-textSecondary-light">
+                    11:15 AM
+                  </Text>
                 </View>
               </StatCard>
 
               <StatCard>
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
                   Available
                 </Text>
-                <Text className="text-3xl font-bold text-blue-700 mt-2">8</Text>
+                <Text className="text-[20px] font-inter text-textSecondary-light">
+                  8
+                </Text>
               </StatCard>
 
               <StatCard>
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
                   Total
                 </Text>
-                <Text className="text-3xl font-bold text-blue-700 mt-2">8</Text>
+                <Text className="text-[20px] font-inter text-textSecondary-light">
+                  8
+                </Text>
               </StatCard>
             </View>
           </View>

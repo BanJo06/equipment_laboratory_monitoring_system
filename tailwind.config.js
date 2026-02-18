@@ -10,6 +10,7 @@ module.exports = {
       },
       lineHeight: {
         "bigger-text-line": "1.19",
+        "body-text-line": "1.50",
       },
       colors: {
         // Global Background
@@ -21,7 +22,10 @@ module.exports = {
           light: "#2567CA",
           dark: "#5F23A6",
         },
-
+        mainColor: {
+          light: "#2567CA",
+          dark: "#5F23A6",
+        },
         // Card Backgrounds
         card: {
           light: "#FFFFFF",
