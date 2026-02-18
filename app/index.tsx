@@ -3,6 +3,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -12,6 +13,7 @@ import { SVG_ICONS } from "../assets/constants/icons";
 SplashScreen.preventAutoHideAsync();
 
 export default function Index() {
+  const router = useRouter();
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_700Bold,
@@ -26,6 +28,14 @@ export default function Index() {
   }, [loaded, error]);
 
   if (!loaded && !error) return null;
+
+  const toUserDashboard = () => {
+    // Perform logic here
+    console.log("Navigating to User Dashboard");
+
+    // Then navigate
+    router.push("/user_dashboard");
+  };
 
   return (
     <View className="flex-1 bg-bgPrimary-light justify-center items-center">
@@ -70,7 +80,7 @@ export default function Index() {
         <View className="items-center mx-4 gap-4">
           <TouchableOpacity
             className="w-full py-4 rounded-md bg-primary-light justify-center items-center"
-            onPress={() => console.log("Hi!")}
+            onPress={toUserDashboard}
           >
             <Text className="font-inter-bold text-[16px] leading-normal text-textButton-light dark:text-textButton-dark">
               Log In
