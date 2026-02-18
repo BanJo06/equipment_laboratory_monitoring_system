@@ -6,6 +6,7 @@ import {
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SVG_ICONS } from "../assets/constants/icons";
 
 // Keep splash screen visible
 SplashScreen.preventAutoHideAsync();
@@ -15,7 +16,8 @@ export default function Index() {
     Inter_400Regular,
     Inter_700Bold,
   });
-  const [text, onChangeText] = useState("Useless Text");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (loaded || error) {
@@ -29,7 +31,9 @@ export default function Index() {
     <View className="flex-1 bg-bgPrimary-light justify-center items-center">
       <View className="w-[560] h-[850] p-8 bg-card-light rounded-xl drop-shadow-[1px_2px_4px_rgba(0,0,0,0.25)]">
         <View className="items-center">
-          <View className="w-[64] h-[64] rounded-full bg-primary-light mt-8 mb-4"></View>
+          <View className="mt-8 mb-4">
+            <SVG_ICONS.LogIn size={64} />
+          </View>
           <View className="items-center gap-2">
             <Text className="text-[34px] font-inter-bold leading-bigger-text-line text-textPrimary-light">
               Lab Equipment Monitor
@@ -46,8 +50,9 @@ export default function Index() {
             </Text>
             <TextInput
               className="p-2 font-inter text-[16px] leading-normal border rounded-md border-borderStrong-light dark:border-borderStrong-dark text-search-light dark:text-search-dark"
-              onChangeText={onChangeText}
-              value={text}
+              placeholder="your username"
+              onChangeText={setUsername}
+              value={username}
             />
           </View>
           <View className="gap-2">
@@ -56,8 +61,9 @@ export default function Index() {
             </Text>
             <TextInput
               className="p-2 font-inter text-[16px] border rounded-md border-borderStrong-light dark:border-borderStrong-dark text-search-light dark:text-search-dark"
-              onChangeText={onChangeText}
-              value={text}
+              placeholder="your password"
+              onChangeText={setPassword}
+              value={password}
             />
           </View>
         </View>
