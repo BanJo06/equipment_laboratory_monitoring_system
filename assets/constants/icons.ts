@@ -1,4 +1,6 @@
+import ActiveSessionsIcon from "../icons/ActiveSessionsIcon";
 import LoginIcon from "../icons/LoginIcon";
+import StartSessionIcon from "../icons/StartSessionIcon";
 
 // Define an interface for your icon map for better type safety
 interface SvgIconMap {
@@ -9,4 +11,6 @@ interface SvgIconMap {
 
 export const SVG_ICONS: SvgIconMap = {
   LogIn: LoginIcon,
+  StartSession: StartSessionIcon,
+  ActiveSessions: ActiveSessionsIcon,
 };

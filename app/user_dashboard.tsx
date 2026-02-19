@@ -1,438 +1,538 @@
+import { SVG_ICONS } from "@/assets/constants/icons";
 import {
   Feather,
   FontAwesome5,
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const StartSessionCard = ({ children, className = "" }) => (
-  <View
-    className={`bg-white rounded-lg px-8 pt-8 pb-6 mb-6 shadow-sm ${className}`}
-  >
-    {children}
-  </View>
-);
+export default function UserDashboard() {
+  const { width } = useWindowDimensions();
 
-const Card = ({ children, className = "" }) => (
-  <View className={`bg-white rounded-lg p-8 mb-6 shadow-sm ${className}`}>
-    {children}
-  </View>
-);
+  // --- RESPONSIVE MATH ---
+  const isMobile = width < 1024;
 
-// 1. Updated BlueButton: Added "onPress = () => {}" to make it optional
-const BlueButton = ({ children, onPress = () => {}, className = "" }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className={`bg-mainColor-light rounded-md py-2.5 px-4 items-center justify-center ${className}`}
-  >
-    {children}
-  </TouchableOpacity>
-);
+  const desktopScale = Math.min(width / 1440, 1);
+  const mobileScale = Math.min(width / 430, 1);
+  const scale = isMobile ? mobileScale : desktopScale;
 
-const BlueButtonText = ({ children, className = "" }) => (
-  <Text
-    className={`text-white font-bold font-inter-bold text-[16px] ${className}`}
-  >
-    {children}
-  </Text>
-);
+  // Scaling helpers
+  const rf = (size) => size * scale;
+  const rs = (size) => size * scale;
 
-// 2. Updated OutlineButton: Added "onPress = () => {}" to make it optional
-const OutlineButton = ({ children, onPress = () => {} }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="border border-blue-700 rounded-lg py-1.5 px-3 flex-row items-center"
-  >
-    {children}
-  </TouchableOpacity>
-);
-
-const OutlineButtonText = ({ children }) => (
-  <Text className="text-blue-700 font-semibold ml-2">{children}</Text>
-);
-
-const DropdownMock = ({ children, className = "" }) => (
-  <View
-    className={`bg-[#EBEDF0] rounded-lg p-3 flex-row justify-between items-center mt-2 ${className}`}
-  >
-    {children}
-  </View>
-);
-
-const InsideCardDropdownMock = ({ children, className = "" }) => (
-  <View
-    className={`bg-white rounded-lg p-3 flex-row justify-between items-center mt-2 ${className}`}
-  >
-    {children}
-  </View>
-);
-
-const SectionTitle = ({ children }) => (
-  <Text className="text-[28px] font-inter-bold text-textPrimary-light">
-    {children}
-  </Text>
-);
-
-const LabelText = ({ children }) => (
-  <Text className="text-textPrimary-light font-inter text-[16px]">
-    {children}
-  </Text>
-);
-
-const StatCard = ({ children }) => (
-  <View className="bg-white rounded-2xl p-4 mb-6 w-[48%] shadow-sm min-h-[140px] max-h-[302px]">
-    {children}
-  </View>
-);
-
-const RadioOption = ({ label, selected }) => (
-  <View className="flex-row items-center mr-4">
-    <View
-      className={`h-5 w-5 rounded-full border-2 ${selected ? "border-blue-600 bg-blue-600" : "border-gray-400 bg-white"} items-center justify-center mr-2`}
-    >
-      {selected && <View className="h-2 w-2 rounded-full bg-white" />}
-    </View>
-    <Text className="text-textPrimary-light font-inter text-[14px]">
-      {label}
-    </Text>
-  </View>
-);
-
-export default function user_dashboard() {
   return (
-    <View className="flex-1 bg-bgPrimary-light">
-      <StatusBar style="dark" />
-      <ScrollView className="flex-1 p-4 pt-8">
-        {/* --- MAIN GRID CONTAINER --- */}
-        <View className="flex-row items-start">
-          {/* =======================
-              LEFT COLUMN 
-             ======================= */}
-          <View className="flex-1 mr-6">
-            {/* 1. Hello Juan */}
-            <Card className="flex-row justify-between items-center">
-              <View className="gap-2">
-                <Text className="text-[34px] font-inter-bold leading-bigger-text-line text-textPrimary-light">
-                  Hello, Juan!
-                </Text>
-                <Text className="text-[16px] font-inter leading-normal text-textSecondary-light">
-                  Ready to use laboratory equipment
-                </Text>
-              </View>
-              <BlueButton>
-                <BlueButtonText>Logout</BlueButtonText>
-              </BlueButton>
-            </Card>
-
-            {/* 2. Start Session */}
-            <StartSessionCard>
-              <View className="flex-row justify-between items-center mb-4">
-                <View className="flex-row items-center gap-4">
-                  <View className="bg-blue-100 p-[14px] rounded-full">
-                    <Feather name="clock" size={36} color="#1d4ed8" />
-                  </View>
-                  <View className="gap-[6px]">
-                    <SectionTitle>Start Session</SectionTitle>
-                    <Text className="text-[16px] font-inter leading-normal text-textSecondary-light">
-                      Begin using equipment
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity>
-                  <Feather name="help-circle" size={24} color="#1d4ed8" />
-                </TouchableOpacity>
-              </View>
-
-              <View className="mb-4">
-                <View className="flex-row items-center mb-1">
-                  <FontAwesome5
-                    name="flask"
-                    size={24}
-                    color="#112747"
-                    style={{ marginRight: 8 }}
-                  />
-                  <LabelText>Select Equipment</LabelText>
-                </View>
-                <DropdownMock>
-                  <Text className="text-textPrimary-light font-inter text-[14px]">
-                    Choose equipment
-                  </Text>
-                  <Feather name="chevron-down" size={20} color="gray" />
-                </DropdownMock>
-              </View>
-
-              <View className="mb-6 bg-[#DADFE5] p-4 rounded-[10px]">
-                <View className="flex-row items-center mb-2">
-                  <Feather
-                    name="clock"
-                    size={24}
-                    color="#112747"
-                    style={{ marginRight: 8 }}
-                  />
-                  <LabelText>Start Time</LabelText>
-                </View>
-                <View className="flex-row mb-2">
-                  <RadioOption label="Dropdown" selected={true} />
-                  <RadioOption label="Manual Entry" selected={false} />
-                </View>
-                <InsideCardDropdownMock>
-                  <Text className="text-textPrimary-light font-inter text-[14px]">
-                    11:45 AM
-                  </Text>
-                  <Feather name="chevron-down" size={20} color="gray" />
-                </InsideCardDropdownMock>
-              </View>
-
-              <BlueButton className="w-full py-3">
-                <BlueButtonText className="text-lg">
-                  Start Using Equipment
-                </BlueButtonText>
-              </BlueButton>
-            </StartSessionCard>
-
-            {/* 3. Available Equipments (Moved to Left Column) */}
-            <Card>
-              <Text className="text-[28px] font-inter-bold text-textPrimary-light mb-4">
-                Available Equipments
-              </Text>
-
-              {/* Table Header */}
-              <View className="flex-row border-b border-[#6684B0] pb-2 mb-2">
-                <Text className="flex-1 font-inter-bold text-textPrimary-light">
-                  Item
-                </Text>
-                <Text className="w-1/4 text-center font-inter-bold text-textPrimary-light">
-                  Qty
-                </Text>
-                <Text className="w-1/3 text-right font-inter-bold text-textPrimary-light">
-                  Last Used
-                </Text>
-              </View>
-
-              {/* Table Rows */}
-              <View className="flex-row border-b border-[#DADFE5] py-2">
-                <Text className="flex-1 font-inter text-textPrimary-light">
-                  Microscope A
-                </Text>
-                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
-                  1
-                </Text>
-                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
-                  Jan 2
-                </Text>
-              </View>
-              <View className="flex-row border-b border-[#DADFE5] py-2">
-                <Text className="flex-1 font-inter text-textPrimary-light">
-                  PCR Machine
-                </Text>
-                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
-                  3
-                </Text>
-                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
-                  Dec 10
-                </Text>
-              </View>
-              <View className="flex-row py-2">
-                <Text className="flex-1 font-inter text-textPrimary-light">
-                  Incubator
-                </Text>
-                <Text className="w-1/4 font-inter text-center text-textPrimary-light">
-                  1
-                </Text>
-                <Text className="w-1/3 font-inter text-right text-textPrimary-light">
-                  Jan 5
-                </Text>
-              </View>
-            </Card>
-          </View>
-
-          {/* =======================
-              RIGHT COLUMN 
-             ======================= */}
-          <View className="flex-1">
-            {/* 1. Active Sessions */}
-            <Card>
-              {/* Header Section (Stays Fixed) */}
-              <View className="flex-row justify-between items-center mb-4">
-                <View className="flex-row items-center gap-4">
-                  <View className="bg-blue-100 p-[14px] rounded-full">
-                    <MaterialCommunityIcons
-                      name="account-clock-outline"
-                      size={36}
-                      color="#1d4ed8"
-                    />
-                  </View>
-                  <View className="gap-[6px]">
-                    <SectionTitle>Active Sessions</SectionTitle>
-                    <Text className="text-[16px] font-inter text-textSecondary-light">
-                      2 equipments in use
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity>
-                  <Feather name="help-circle" size={24} color="#1d4ed8" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Scrollable Area for Items */}
-              {/* Added h-96 (approx 384px) to force scrolling. Adjust height as needed. */}
-              <ScrollView
-                className="h-[492px]"
-                nestedScrollEnabled={true}
-                // showsVerticalScrollIndicator={true}
+    <SafeAreaView style={{ flex: 1 }}>
+      <View className="flex-1 bg-bgPrimary-light">
+        {/* <Stack.Screen options={{ headerShown: false }} /> */}
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: rs(24) }}
+        >
+          <View
+            style={{
+              flexDirection: isMobile ? "column" : "row",
+              alignItems: "flex-start",
+              gap: rs(24),
+            }}
+          >
+            {/* ======================= LEFT COLUMN ======================= */}
+            <View style={{ flex: 1, width: "100%" }}>
+              {/* 1. Hello Juan */}
+              <View
+                style={{
+                  padding: rs(32),
+                  marginBottom: rs(24),
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: rs(12),
+                }}
+                className="bg-white rounded-lg shadow-sm"
               >
-                {/* Active Item 1: Microscope A */}
-                <View className="bg-gray-200 rounded-xl p-4 mb-4">
-                  <View className="flex-row justify-between items-start mb-2">
-                    <View className="flex-row items-center">
-                      <MaterialCommunityIcons
-                        name="microscope"
-                        size={20}
-                        color="#1d4ed8"
-                      />
-                      <Text className="font-inter text-textPrimary-light ml-2 text-[16px]">
-                        Microscope A
+                <View style={{ gap: rs(4), flexShrink: 1 }}>
+                  <Text
+                    style={{ fontSize: rf(34) }}
+                    className="font-inter-bold text-textPrimary-light"
+                  >
+                    Hello, Juan!
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(16) }}
+                    className="font-inter text-textSecondary-light"
+                  >
+                    Ready to use laboratory equipment
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+                  className="bg-mainColor-light rounded-md"
+                >
+                  <Text
+                    style={{ fontSize: rf(16) }}
+                    className="text-white font-inter-bold"
+                  >
+                    Logout
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* 2. Start Session */}
+              <View
+                style={{
+                  paddingHorizontal: rs(32),
+                  paddingTop: rs(32),
+                  paddingBottom: rs(24),
+                  marginBottom: rs(24),
+                }}
+                className="bg-white rounded-lg shadow-sm"
+              >
+                <View
+                  style={{
+                    marginBottom: rs(16),
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: rs(12),
+                  }}
+                >
+                  <View
+                    style={{
+                      gap: rs(16),
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flexShrink: 1,
+                    }}
+                  >
+                    <SVG_ICONS.StartSession size={rs(64)} />
+                    <View style={{ gap: rs(6), flexShrink: 1 }}>
+                      <Text
+                        style={{ fontSize: rf(28) }}
+                        className="font-inter-bold text-textPrimary-light"
+                      >
+                        Start Session
+                      </Text>
+                      <Text
+                        style={{ fontSize: rf(16) }}
+                        className="font-inter text-textSecondary-light"
+                      >
+                        Begin using equipment
                       </Text>
                     </View>
-                    <OutlineButton>
-                      <Ionicons
-                        name="qr-code-outline"
-                        size={16}
-                        color="#1d4ed8"
-                      />
-                      <OutlineButtonText>QR</OutlineButtonText>
-                    </OutlineButton>
                   </View>
+                  <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                </View>
 
-                  <View className="bg-white flex-row items-center rounded-xl px-4 py-3 self-start shadow-sm border border-gray-100 mb-6">
-                    <Feather name="clock" size={24} color="#112747" />
-                    <Text className="text-textPrimary-light font-inter ml-2 mr-4 text-[14px]">
-                      Started: 8:00 AM
+                <View style={{ marginBottom: rs(16) }}>
+                  <View className="flex-row items-center mb-1">
+                    <FontAwesome5
+                      name="flask"
+                      size={rf(20)}
+                      color="#112747"
+                      style={{ marginRight: rs(8) }}
+                    />
+                    <Text
+                      style={{ fontSize: rf(16) }}
+                      className="text-textPrimary-light font-inter"
+                    >
+                      Select Equipment
                     </Text>
-                    <View className="bg-[#DADFE5] rounded-[4px] px-3 py-1">
-                      <Text className="text-textPrimary-light font-inter text-[14px]">
-                        3h 55m
+                  </View>
+                  <View
+                    style={{ padding: rs(12) }}
+                    className="bg-[#EBEDF0] rounded-lg flex-row justify-between items-center mt-2"
+                  >
+                    <Text
+                      style={{ fontSize: rf(14) }}
+                      className="text-textPrimary-light font-inter"
+                    >
+                      Choose equipment
+                    </Text>
+                    <Feather name="chevron-down" size={rs(20)} color="gray" />
+                  </View>
+                </View>
+
+                <View
+                  style={{ marginBottom: rs(24), padding: rs(16) }}
+                  className="bg-[#DADFE5] rounded-[10px]"
+                >
+                  <View
+                    style={{ marginBottom: rs(8) }}
+                    className="flex-row items-center"
+                  >
+                    <Feather
+                      name="clock"
+                      size={rf(20)}
+                      color="#112747"
+                      style={{ marginRight: rs(8) }}
+                    />
+                    <Text
+                      style={{ fontSize: rf(16) }}
+                      className="text-textPrimary-light font-inter"
+                    >
+                      Start Time
+                    </Text>
+                  </View>
+                  <View style={{ marginBottom: rs(8) }} className="flex-row">
+                    <View
+                      style={{ marginRight: rs(16) }}
+                      className="flex-row items-center"
+                    >
+                      <View className="h-5 w-5 rounded-full border-2 border-blue-600 bg-blue-600 items-center justify-center mr-2">
+                        <View className="h-2 w-2 rounded-full bg-white" />
+                      </View>
+                      <Text
+                        style={{ fontSize: rf(14) }}
+                        className="text-textPrimary-light font-inter"
+                      >
+                        Dropdown
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <View className="h-5 w-5 rounded-full border-2 border-gray-400 bg-white mr-2" />
+                      <Text
+                        style={{ fontSize: rf(14) }}
+                        className="text-textPrimary-light font-inter"
+                      >
+                        Manual Entry
                       </Text>
                     </View>
                   </View>
+                  <View
+                    style={{ padding: rs(12) }}
+                    className="bg-white rounded-lg flex-row justify-between items-center mt-2"
+                  >
+                    <Text
+                      style={{ fontSize: rf(14) }}
+                      className="text-textPrimary-light font-inter"
+                    >
+                      11:45 AM
+                    </Text>
+                    <Feather name="chevron-down" size={rs(20)} color="gray" />
+                  </View>
+                </View>
 
-                  <View>
-                    <View className="flex-row items-center mb-2">
+                <TouchableOpacity
+                  style={{ paddingVertical: rs(16) }}
+                  className="bg-mainColor-light rounded-md items-center justify-center w-full"
+                >
+                  <Text
+                    style={{ fontSize: rf(18) }}
+                    className="text-white font-inter-bold"
+                  >
+                    Start Using Equipment
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* 3. Available Equipments Table - PERSISTENT LAST USED COLUMN */}
+              <View
+                style={{ padding: rs(32), marginBottom: rs(24) }}
+                className="bg-white rounded-lg shadow-sm"
+              >
+                <Text
+                  style={{ fontSize: rf(28), marginBottom: rs(16) }}
+                  className="font-inter-bold text-textPrimary-light"
+                >
+                  Available Equipments
+                </Text>
+
+                {/* Header */}
+                <View
+                  style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
+                  className="flex-row border-b border-[#6684B0]"
+                >
+                  <Text
+                    style={{ fontSize: rf(14), flex: 2 }}
+                    className="font-inter-bold text-textPrimary-light"
+                  >
+                    Item
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(14), flex: 0.5 }}
+                    className="text-center font-inter-bold text-textPrimary-light"
+                  >
+                    Qty
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(14), flex: 1.2 }}
+                    className="text-right font-inter-bold text-textPrimary-light"
+                  >
+                    Last Used
+                  </Text>
+                </View>
+
+                {/* Rows */}
+                {["Microscope A", "PCR Machine", "Incubator"].map(
+                  (item, idx) => (
+                    <View
+                      key={idx}
+                      style={{ paddingVertical: rs(8) }}
+                      className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
+                    >
+                      <Text
+                        style={{ fontSize: rf(14), flex: 2 }}
+                        className="font-inter text-textPrimary-light"
+                        numberOfLines={1}
+                      >
+                        {item}
+                      </Text>
+                      <Text
+                        style={{ fontSize: rf(14), flex: 0.5 }}
+                        className="font-inter text-center text-textPrimary-light"
+                      >
+                        {idx + 1}
+                      </Text>
+                      <Text
+                        style={{ fontSize: rf(14), flex: 1.2 }}
+                        className="font-inter text-right text-textPrimary-light"
+                      >
+                        Jan {idx + 2}
+                      </Text>
+                    </View>
+                  ),
+                )}
+              </View>
+            </View>
+
+            {/* ======================= RIGHT COLUMN ======================= */}
+            <View style={{ flex: 1, width: "100%" }}>
+              {/* 4. Active Sessions */}
+              <View
+                style={{ padding: rs(32), marginBottom: rs(24) }}
+                className="bg-white rounded-lg shadow-sm"
+              >
+                <View
+                  style={{
+                    marginBottom: rs(16),
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: rs(12),
+                  }}
+                >
+                  <View
+                    style={{
+                      gap: rs(16),
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flexShrink: 1,
+                    }}
+                  >
+                    <SVG_ICONS.ActiveSessions size={rs(64)} />
+                    <View style={{ gap: rs(6), flexShrink: 1 }}>
+                      <Text
+                        style={{ fontSize: rf(28) }}
+                        className="font-inter-bold text-textPrimary-light"
+                      >
+                        Active Sessions
+                      </Text>
+                      <Text
+                        style={{ fontSize: rf(16) }}
+                        className="font-inter text-textSecondary-light"
+                      >
+                        2 equipments in use
+                      </Text>
+                    </View>
+                  </View>
+                  <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                </View>
+
+                <ScrollView
+                  style={{ height: rs(492) }}
+                  nestedScrollEnabled={true}
+                >
+                  <View
+                    style={{ padding: rs(16), marginBottom: rs(16) }}
+                    className="bg-gray-200 rounded-xl"
+                  >
+                    <View
+                      style={{
+                        marginBottom: rs(8),
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: "space-between",
+                        gap: rs(8),
+                      }}
+                    >
+                      <View className="flex-row items-center">
+                        <MaterialCommunityIcons
+                          name="microscope"
+                          size={rs(20)}
+                          color="#1d4ed8"
+                        />
+                        <Text
+                          style={{ fontSize: rf(16) }}
+                          className="font-inter text-textPrimary-light ml-2"
+                        >
+                          Microscope A
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={{
+                          paddingVertical: rs(6),
+                          paddingHorizontal: rs(12),
+                        }}
+                        className="border border-blue-700 rounded-lg flex-row items-center"
+                      >
+                        <Ionicons
+                          name="qr-code-outline"
+                          size={rs(16)}
+                          color="#1d4ed8"
+                        />
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className="text-blue-700 font-inter-bold ml-2"
+                        >
+                          QR
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View
+                      style={{
+                        paddingHorizontal: rs(16),
+                        paddingVertical: rs(12),
+                        marginBottom: rs(24),
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: rs(8),
+                      }}
+                      className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
+                    >
+                      <Feather name="clock" size={rs(20)} color="#112747" />
+                      <Text
+                        style={{ fontSize: rf(14) }}
+                        className="text-textPrimary-light font-inter ml-2"
+                      >
+                        Started: 8:00 AM
+                      </Text>
+                      <View
+                        style={{
+                          paddingHorizontal: rs(12),
+                          paddingVertical: rs(4),
+                        }}
+                        className="bg-[#DADFE5] rounded-[4px]"
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className="text-textPrimary-light font-inter"
+                        >
+                          3h 55m
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View
+                      style={{ marginBottom: rs(8) }}
+                      className="flex-row items-center"
+                    >
                       <Feather
                         name="clock"
-                        size={24}
+                        size={rs(20)}
                         color="#112747"
-                        style={{ marginRight: 8 }}
+                        style={{ marginRight: rs(8) }}
                       />
-                      <LabelText>End Time</LabelText>
+                      <Text
+                        style={{ fontSize: rf(16) }}
+                        className="text-textPrimary-light font-inter"
+                      >
+                        End Time
+                      </Text>
                     </View>
-                    <View className="flex-row mb-2">
-                      <RadioOption label="Dropdown" selected={true} />
-                      <RadioOption label="Manual" selected={false} />
-                    </View>
-                    <View className="flex-row">
-                      <InsideCardDropdownMock className="flex-1 mr-2 mt-0 bg-gray-300">
-                        <Text className="font-inter text-textPrimary-light">
+
+                    <View
+                      style={{
+                        flexDirection: width < 500 ? "column" : "row",
+                        gap: rs(8),
+                      }}
+                    >
+                      <View
+                        style={{ padding: rs(12) }}
+                        className="flex-1 bg-gray-300 rounded-lg flex-row justify-between items-center"
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className="font-inter text-textPrimary-light"
+                        >
                           11:45 AM
                         </Text>
-                        <Feather name="chevron-down" size={20} color="gray" />
-                      </InsideCardDropdownMock>
-                      <BlueButton className="px-6 bg-blue-700">
-                        <BlueButtonText>Stop</BlueButtonText>
-                      </BlueButton>
+                        <Feather
+                          name="chevron-down"
+                          size={rs(20)}
+                          color="gray"
+                        />
+                      </View>
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: rs(24),
+                          paddingVertical: width < 500 ? rs(12) : 0,
+                        }}
+                        className="bg-blue-700 rounded-md items-center justify-center"
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className="text-white font-inter-bold"
+                        >
+                          Stop
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                </View>
+                </ScrollView>
+              </View>
 
-                {/* Active Item 2: PCR Machine */}
-                <View className="bg-gray-200 rounded-xl p-4 mb-2">
-                  <View className="flex-row justify-between items-start mb-2">
-                    <View className="flex-row items-center">
-                      <MaterialCommunityIcons
-                        name="printer-3d"
-                        size={20}
-                        color="#1d4ed8"
-                      />
-                      <Text className="font-inter text-textPrimary-light ml-2 text-[16px]">
-                        PCR Machine
-                      </Text>
-                    </View>
-                    <OutlineButton>
-                      <Ionicons
-                        name="qr-code-outline"
-                        size={16}
-                        color="#1d4ed8"
-                      />
-                      <OutlineButtonText>QR</OutlineButtonText>
-                    </OutlineButton>
-                  </View>
-
-                  <View className="bg-white flex-row items-center rounded-xl px-4 py-3 self-start shadow-sm border border-gray-100 mb-6">
-                    <Feather name="clock" size={24} color="#112747" />
-                    <Text className="text-textPrimary-light font-inter ml-2 mr-4 text-[14px]">
-                      Started: 9:00 AM
+              {/* 5. Stats Grid */}
+              <View
+                style={{ gap: rs(16) }}
+                className="flex-row flex-wrap justify-between"
+              >
+                {[
+                  { label: "My Active", val: "2" },
+                  { label: "Date/Time", val: "Jan 10, 11:15 AM" },
+                  { label: "Available", val: "8" },
+                  { label: "Total", val: "8" },
+                ].map((stat, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      padding: rs(16),
+                      minHeight: rs(120),
+                      width: isMobile ? "47.5%" : "48%",
+                    }}
+                    className="bg-white rounded-2xl shadow-sm"
+                  >
+                    <Text
+                      style={{ fontSize: rf(20) }}
+                      className="font-inter-bold text-textPrimary-light"
+                    >
+                      {stat.label}
                     </Text>
-                    <View className="bg-[#DADFE5] rounded-[4px] px-3 py-1">
-                      <Text className="text-textPrimary-light font-inter text-[14px]">
-                        2h 55m
-                      </Text>
-                    </View>
+                    <Text
+                      style={{ fontSize: rf(16) }}
+                      className="font-inter text-textSecondary-light mt-2"
+                    >
+                      {stat.val}
+                    </Text>
                   </View>
-                </View>
-              </ScrollView>
-            </Card>
-
-            {/* 4. Small Stats Grid (Moved to Right Column) */}
-            <View className="flex-row flex-wrap justify-between">
-              <StatCard>
-                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
-                  My Active
-                </Text>
-                <Text className="text-[20px] font-inter text-textSecondary-light">
-                  2
-                </Text>
-              </StatCard>
-
-              <StatCard>
-                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
-                  Date/Time
-                </Text>
-                <View className="mt-2">
-                  <Text className="text-[20px] font-inter text-textSecondary-light">
-                    Jan 10, 2026
-                  </Text>
-                  <Text className="text-[20px] font-inter text-textSecondary-light">
-                    11:15 AM
-                  </Text>
-                </View>
-              </StatCard>
-
-              <StatCard>
-                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
-                  Available
-                </Text>
-                <Text className="text-[20px] font-inter text-textSecondary-light">
-                  8
-                </Text>
-              </StatCard>
-
-              <StatCard>
-                <Text className="text-[24px] font-inter-bold text-textPrimary-light">
-                  Total
-                </Text>
-                <Text className="text-[20px] font-inter text-textSecondary-light">
-                  8
-                </Text>
-              </StatCard>
+                ))}
+              </View>
             </View>
           </View>
-        </View>
-
-        <View className="h-10" />
-      </ScrollView>
-    </View>
+          <View style={{ height: rs(40) }} />
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
