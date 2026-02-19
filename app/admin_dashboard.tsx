@@ -29,8 +29,9 @@ export default function AdminDashboard() {
       <View className="flex-1 bg-bgPrimary-light">
         {/* <Stack.Screen options={{ headerShown: false }} /> */}
         <ScrollView
-          className="flex-1"
+          className="flex-1 mx-[80px]"
           contentContainerStyle={{ padding: rs(24) }}
+          showsVerticalScrollIndicator={false}
         >
           <View
             style={{
@@ -81,84 +82,48 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
               </View>
 
-              <View className="flex-row">
+              <View
+                style={{
+                  flexDirection: isMobile ? "column" : "row", // Stack on mobile, side-by-side on web
+                  gap: rs(24),
+                  marginBottom: rs(24),
+                  alignItems: "stretch",
+                }}
+              >
                 <View
                   style={{
+                    flex: 1,
                     padding: rs(32),
-                    marginBottom: rs(24),
-                    width: rs(302),
-                    height: rs(496),
-                    marginRight: rs(24),
                     gap: rs(16),
                   }}
                   className="bg-white rounded-lg shadow-sm"
                 >
-                  <TouchableOpacity
-                    style={{ paddingVertical: rs(16) }}
-                    className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                  >
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="text-white font-inter-bold"
+                  {[
+                    "Home",
+                    "Accounts",
+                    "Usage History",
+                    "Analytics",
+                    "Equipment Inventory",
+                  ].map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={{ paddingVertical: rs(16) }}
+                      className="bg-mainColor-light rounded-md items-center justify-center w-full"
                     >
-                      Home
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{ paddingVertical: rs(16) }}
-                    className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                  >
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="text-white font-inter-bold"
-                    >
-                      Accounts
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{ paddingVertical: rs(16) }}
-                    className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                  >
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="text-white font-inter-bold"
-                    >
-                      Usage History
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{ paddingVertical: rs(16) }}
-                    className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                  >
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="text-white font-inter-bold"
-                    >
-                      Analytics
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{ paddingVertical: rs(16) }}
-                    className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                  >
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="text-white font-inter-bold"
-                    >
-                      Equipment Inventory
-                    </Text>
-                  </TouchableOpacity>
+                      <Text
+                        style={{ fontSize: rf(16) }}
+                        className="text-white font-inter-bold"
+                      >
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+
                 <View
                   style={{
-                    paddingHorizontal: rs(32),
-                    paddingTop: rs(32),
-                    paddingBottom: rs(24),
-                    marginBottom: rs(24),
+                    flex: 1,
+                    padding: rs(32),
                   }}
                   className="bg-white rounded-lg shadow-sm"
                 >
@@ -172,6 +137,7 @@ export default function AdminDashboard() {
                   </View>
 
                   <View className="gap-4">
+                    {/* Person 1 */}
                     <View className="flex-row gap-4">
                       <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
                       <View className="flex-col gap-1">
@@ -180,6 +146,31 @@ export default function AdminDashboard() {
                         </Text>
                         <Text className="font-inter text-[14px] text-textSecondary-light">
                           Researcher II
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Person 2 */}
+                    <View className="flex-row gap-4">
+                      <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
+                      <View className="flex-col gap-1">
+                        <Text className="font-inter-bold text-[16px] text-textPrimary-light">
+                          Carl Lozano
+                        </Text>
+                        <Text className="font-inter text-[14px] text-textSecondary-light">
+                          Researcher III
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Person 3 */}
+
+                    <View className="flex-row gap-4">
+                      <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
+                      <View className="flex-col gap-1">
+                        <Text className="font-inter-bold text-[16px] text-textPrimary-light">
+                          Dave Yokingco
+                        </Text>
+                        <Text className="font-inter text-[14px] text-textSecondary-light">
+                          Researcher III
                         </Text>
                       </View>
                     </View>
