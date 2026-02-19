@@ -15,38 +15,38 @@ export default function AdminDashboard() {
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
+  // New breakpoint for the small cards to stack
+  const isSmallPhone = width < 600;
 
   const desktopScale = Math.min(width / 1440, 1);
   const mobileScale = Math.min(width / 430, 1);
   const scale = isMobile ? mobileScale : desktopScale;
 
-  // Scaling helpers
   const rf = (size) => size * scale;
   const rs = (size) => size * scale;
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View className="flex-1 bg-bgPrimary-light">
-        {/* <Stack.Screen options={{ headerShown: false }} /> */}
         <ScrollView
-          className="flex-1 mx-[80px]"
+          className="flex-1"
           contentContainerStyle={{ padding: rs(24) }}
           showsVerticalScrollIndicator={false}
         >
+          {/* ================= MASTER CONTAINER ================= */}
           <View
             style={{
               flexDirection: isMobile ? "column" : "row",
-              alignItems: "flex-start",
+              alignItems: "stretch",
               gap: rs(24),
             }}
           >
-            {/* ======================= LEFT COLUMN ======================= */}
-            <View style={{ flex: 1, width: "100%" }}>
-              {/* 1. Hello Admin Juan */}
+            {/* ================= LEFT COLUMN ================= */}
+            <View style={{ flex: isMobile ? undefined : 1.5, gap: rs(24) }}>
+              {/* 1. Hello Admin Card */}
               <View
                 style={{
                   padding: rs(32),
-                  marginBottom: rs(24),
                   flexDirection: "row",
                   flexWrap: "wrap",
                   justifyContent: "space-between",
@@ -82,20 +82,17 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
               </View>
 
+              {/* 2. Middle Row (Nav & Online) - FORCED TWO COLUMNS UNTIL SMALL PHONE */}
               <View
                 style={{
-                  flexDirection: isMobile ? "column" : "row", // Stack on mobile, side-by-side on web
-                  gap: rs(24),
-                  marginBottom: rs(24),
+                  flexDirection: "row", // Only stack on very small screens
                   alignItems: "stretch",
+                  gap: rs(24),
                 }}
               >
+                {/* Navigation Menu */}
                 <View
-                  style={{
-                    flex: 1,
-                    padding: rs(32),
-                    gap: rs(16),
-                  }}
+                  style={{ flex: 1, padding: rs(32), gap: rs(16) }}
                   className="bg-white rounded-lg shadow-sm"
                 >
                   {[
@@ -104,83 +101,60 @@ export default function AdminDashboard() {
                     "Usage History",
                     "Analytics",
                     "Equipment Inventory",
-                  ].map((item) => (
+                  ].map((label) => (
                     <TouchableOpacity
-                      key={item}
+                      key={label}
                       style={{ paddingVertical: rs(16) }}
                       className="bg-mainColor-light rounded-md items-center justify-center w-full"
                     >
                       <Text
-                        style={{ fontSize: rf(16) }}
+                        style={{ fontSize: isSmallPhone ? 14 : 16 }}
                         className="text-white font-inter-bold"
                       >
-                        {item}
+                        {label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
+                {/* Who's Online */}
                 <View
-                  style={{
-                    flex: 1,
-                    padding: rs(32),
-                  }}
+                  style={{ flex: 1, padding: rs(32) }}
                   className="bg-white rounded-lg shadow-sm"
                 >
                   <View className="mb-6">
                     <Text
-                      style={{ fontSize: rf(18) }}
+                      style={{ fontSize: isSmallPhone ? rf(18) : 18 }}
                       className="text-textPrimary-light font-inter-bold"
                     >
                       Online
                     </Text>
                   </View>
-
                   <View className="gap-4">
-                    {/* Person 1 */}
-                    <View className="flex-row gap-4">
-                      <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
-                      <View className="flex-col gap-1">
-                        <Text className="font-inter-bold text-[16px] text-textPrimary-light">
-                          Juan Dela Cruz
-                        </Text>
-                        <Text className="font-inter text-[14px] text-textSecondary-light">
-                          Researcher II
-                        </Text>
+                    {[
+                      { n: "Juan Dela Cruz", r: "Researcher II" },
+                      { n: "Carl Lozano", r: "Researcher III" },
+                      { n: "Dave Yokingco", r: "Researcher III" },
+                    ].map((p, i) => (
+                      <View key={i} className="flex-row gap-4">
+                        <View className="bg-blue-600 w-[48px] h-[48px] rounded-full" />
+                        <View className="flex-col gap-1">
+                          <Text className="font-inter-bold text-[16px] text-textPrimary-light">
+                            {p.n}
+                          </Text>
+                          <Text className="font-inter text-[14px] text-textSecondary-light">
+                            {p.r}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    {/* Person 2 */}
-                    <View className="flex-row gap-4">
-                      <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
-                      <View className="flex-col gap-1">
-                        <Text className="font-inter-bold text-[16px] text-textPrimary-light">
-                          Carl Lozano
-                        </Text>
-                        <Text className="font-inter text-[14px] text-textSecondary-light">
-                          Researcher III
-                        </Text>
-                      </View>
-                    </View>
-                    {/* Person 3 */}
-
-                    <View className="flex-row gap-4">
-                      <View className="bg-blue-600 w-[48px] h-[48px] rounded-full"></View>
-                      <View className="flex-col gap-1">
-                        <Text className="font-inter-bold text-[16px] text-textPrimary-light">
-                          Dave Yokingco
-                        </Text>
-                        <Text className="font-inter text-[14px] text-textSecondary-light">
-                          Researcher III
-                        </Text>
-                      </View>
-                    </View>
+                    ))}
                   </View>
                 </View>
               </View>
 
-              {/* 3. Available Equipments Table - PERSISTENT LAST USED COLUMN */}
+              {/* 3. Available Equipments Table */}
               <View
-                style={{ padding: rs(32), marginBottom: rs(24) }}
+                style={{ padding: rs(32) }}
                 className="bg-white rounded-lg shadow-sm"
               >
                 <Text
@@ -189,8 +163,6 @@ export default function AdminDashboard() {
                 >
                   Available Equipments
                 </Text>
-
-                {/* Header */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -214,8 +186,6 @@ export default function AdminDashboard() {
                     Last Used
                   </Text>
                 </View>
-
-                {/* Rows */}
                 {["Microscope A", "PCR Machine", "Incubator"].map(
                   (item, idx) => (
                     <View
@@ -248,120 +218,108 @@ export default function AdminDashboard() {
               </View>
             </View>
 
-            {/* ======================= RIGHT COLUMN ======================= */}
-            <View style={{ flex: 1, width: "100%" }}>
-              {/* 4. Active Sessions */}
+            {/* ================= RIGHT COLUMN (ACTIVE SESSIONS) ================= */}
+            <View
+              style={{
+                flex: 1,
+                padding: rs(32),
+                minHeight: isMobile ? rs(450) : undefined,
+              }}
+              className="bg-white rounded-lg shadow-sm"
+            >
               <View
-                style={{ padding: rs(32), marginBottom: rs(24) }}
-                className="bg-white rounded-lg shadow-sm"
+                style={{
+                  marginBottom: rs(16),
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
               >
                 <View
                   style={{
-                    marginBottom: rs(16),
+                    gap: rs(16),
                     flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    gap: rs(12),
+                    flexShrink: 1,
                   }}
                 >
+                  <SVG_ICONS.ActiveSessions size={rs(64)} />
+                  <View style={{ gap: rs(6), flexShrink: 1 }}>
+                    <Text
+                      style={{ fontSize: rf(28) }}
+                      className="font-inter-bold text-textPrimary-light"
+                    >
+                      Active Sessions
+                    </Text>
+                    <Text
+                      style={{ fontSize: rf(16) }}
+                      className="font-inter text-textSecondary-light"
+                    >
+                      2 equipments in use
+                    </Text>
+                  </View>
+                </View>
+                <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+              </View>
+
+              <ScrollView
+                style={{ flex: 1 }}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={false}
+              >
+                <View
+                  style={{ padding: rs(16), marginBottom: rs(16) }}
+                  className="bg-gray-200 rounded-xl"
+                >
+                  <View className="flex-row items-center mb-4">
+                    <MaterialCommunityIcons
+                      name="microscope"
+                      size={rs(20)}
+                      color="#1d4ed8"
+                    />
+                    <Text
+                      style={{ fontSize: rf(16) }}
+                      className="font-inter text-textPrimary-light ml-2"
+                    >
+                      Microscope A
+                    </Text>
+                  </View>
                   <View
                     style={{
-                      gap: rs(16),
+                      paddingHorizontal: rs(16),
+                      paddingVertical: rs(12),
                       flexDirection: "row",
-                      alignItems: "center",
-                      flexShrink: 1,
+                      gap: rs(8),
                     }}
+                    className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
                   >
-                    <SVG_ICONS.ActiveSessions size={rs(64)} />
-                    <View style={{ gap: rs(6), flexShrink: 1 }}>
-                      <Text
-                        style={{ fontSize: rf(28) }}
-                        className="font-inter-bold text-textPrimary-light"
-                      >
-                        Active Sessions
-                      </Text>
-                      <Text
-                        style={{ fontSize: rf(16) }}
-                        className="font-inter text-textSecondary-light"
-                      >
-                        2 equipments in use
-                      </Text>
-                    </View>
-                  </View>
-                  <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
-                </View>
-
-                <ScrollView
-                  style={{ height: rs(750) }}
-                  nestedScrollEnabled={true}
-                >
-                  <View
-                    style={{ padding: rs(16), marginBottom: rs(16) }}
-                    className="bg-gray-200 rounded-xl"
-                  >
+                    <Feather name="clock" size={rs(20)} color="#112747" />
+                    <Text
+                      style={{ fontSize: rf(14) }}
+                      className="text-textPrimary-light font-inter ml-2"
+                    >
+                      Started: 8:00 AM
+                    </Text>
                     <View
                       style={{
-                        marginBottom: rs(8),
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        justifyContent: "space-between",
-                        gap: rs(8),
+                        paddingHorizontal: rs(12),
+                        paddingVertical: rs(4),
                       }}
+                      className="bg-[#DADFE5] rounded-[4px]"
                     >
-                      <View className="flex-row items-center">
-                        <MaterialCommunityIcons
-                          name="microscope"
-                          size={rs(20)}
-                          color="#1d4ed8"
-                        />
-                        <Text
-                          style={{ fontSize: rf(16) }}
-                          className="font-inter text-textPrimary-light ml-2"
-                        >
-                          Microscope A
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View
-                      style={{
-                        paddingHorizontal: rs(16),
-                        paddingVertical: rs(12),
-                        marginBottom: rs(24),
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: rs(8),
-                      }}
-                      className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
-                    >
-                      <Feather name="clock" size={rs(20)} color="#112747" />
                       <Text
                         style={{ fontSize: rf(14) }}
-                        className="text-textPrimary-light font-inter ml-2"
+                        className="text-textPrimary-light font-inter"
                       >
-                        Started: 8:00 AM
+                        3h 55m
                       </Text>
-                      <View
-                        style={{
-                          paddingHorizontal: rs(12),
-                          paddingVertical: rs(4),
-                        }}
-                        className="bg-[#DADFE5] rounded-[4px]"
-                      >
-                        <Text
-                          style={{ fontSize: rf(14) }}
-                          className="text-textPrimary-light font-inter"
-                        >
-                          3h 55m
-                        </Text>
-                      </View>
                     </View>
                   </View>
-                </ScrollView>
-              </View>
+                </View>
+              </ScrollView>
             </View>
           </View>
+
           <View style={{ height: rs(40) }} />
         </ScrollView>
       </View>
