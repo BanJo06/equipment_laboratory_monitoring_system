@@ -153,6 +153,7 @@ export default function Index() {
               <TouchableOpacity
                 style={{ height: 56 }}
                 className="w-full rounded-md bg-primary-light justify-center items-center"
+                onPress={() => router.push("/admin_dashboard")}
               >
                 <Text
                   style={{ fontSize: rf(16) }}
