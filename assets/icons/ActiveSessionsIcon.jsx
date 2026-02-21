@@ -1,5 +1,5 @@
 import Svg, { Path, Rect } from "react-native-svg";
-const SvgComponent = ({ size = 64, color = "#2567CA", ...props }) => (
+const ActiveSessionsIcon = ({ size = 64, color = "#2567CA", ...props }) => (
   <Svg
     xmlns="http://www.w3.org/2000/svg"
     width={size}
@@ -17,4 +17,4 @@ const SvgComponent = ({ size = 64, color = "#2567CA", ...props }) => (
     />
   </Svg>
 );
-export default SvgComponent;
+export default ActiveSessionsIcon;

@@ -1,6 +1,4 @@
-import { SVG_ICONS } from "@/assets/constants/icons";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   Text,
@@ -9,13 +7,19 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Accounts from "./screens/accounts";
+import EquipmentInventory from "./screens/equipment_inventory";
+import Home from "./screens/home";
+import UsageHistory from "./screens/usage_history";
 
 export default function AdminDashboard() {
   const { width } = useWindowDimensions();
 
+  // --- STATE FOR NAVIGATION ---
+  const [activeTab, setActiveTab] = useState("Home");
+
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
-  // New breakpoint for the small cards to stack
   const isSmallPhone = width < 600;
 
   const desktopScale = Math.min(width / 1440, 1);
@@ -82,10 +86,10 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* 2. Middle Row (Nav & Online) - FORCED TWO COLUMNS UNTIL SMALL PHONE */}
+              {/* 2. Middle Row (Nav & Online) */}
               <View
                 style={{
-                  flexDirection: "row", // Only stack on very small screens
+                  flexDirection: "row",
                   alignItems: "stretch",
                   gap: rs(24),
                 }}
@@ -104,6 +108,7 @@ export default function AdminDashboard() {
                   ].map((label) => (
                     <TouchableOpacity
                       key={label}
+                      onPress={() => setActiveTab(label)}
                       style={{ paddingVertical: rs(16) }}
                       className="bg-mainColor-light rounded-md items-center justify-center w-full"
                     >
@@ -218,106 +223,32 @@ export default function AdminDashboard() {
               </View>
             </View>
 
-            {/* ================= RIGHT COLUMN (ACTIVE SESSIONS) ================= */}
-            <View
-              style={{
-                flex: 1,
-                padding: rs(32),
-                minHeight: isMobile ? rs(450) : undefined,
-              }}
-              className="bg-white rounded-lg shadow-sm"
-            >
+            {/* ================= RIGHT COLUMN (DYNAMIC) ================= */}
+            {activeTab === "Home" && <Home />}
+            {activeTab === "Accounts" && <Accounts />}
+            {activeTab === "Usage History" && <UsageHistory />}
+            {activeTab === "Equipment Inventory" && <EquipmentInventory />}
+
+            {/* Fallback view for unbuilt pages */}
+            {activeTab == "Analytics" && (
               <View
                 style={{
-                  marginBottom: rs(16),
-                  flexDirection: "row",
-                  justifyContent: "space-between",
+                  flex: 1,
+                  padding: rs(32),
+                  minHeight: isMobile ? rs(450) : undefined,
+                  justifyContent: "center",
                   alignItems: "center",
                 }}
+                className="bg-white rounded-lg shadow-sm"
               >
-                <View
-                  style={{
-                    gap: rs(16),
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flexShrink: 1,
-                  }}
+                <Text
+                  style={{ fontSize: rf(24) }}
+                  className="font-inter-bold text-textPrimary-light text-center"
                 >
-                  <SVG_ICONS.ActiveSessions size={rs(64)} />
-                  <View style={{ gap: rs(6), flexShrink: 1 }}>
-                    <Text
-                      style={{ fontSize: rf(28) }}
-                      className="font-inter-bold text-textPrimary-light"
-                    >
-                      Active Sessions
-                    </Text>
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="font-inter text-textSecondary-light"
-                    >
-                      2 equipments in use
-                    </Text>
-                  </View>
-                </View>
-                <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                  {activeTab} Content Coming Soon...
+                </Text>
               </View>
-
-              <ScrollView
-                style={{ flex: 1 }}
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={false}
-              >
-                <View
-                  style={{ padding: rs(16), marginBottom: rs(16) }}
-                  className="bg-gray-200 rounded-xl"
-                >
-                  <View className="flex-row items-center mb-4">
-                    <MaterialCommunityIcons
-                      name="microscope"
-                      size={rs(20)}
-                      color="#1d4ed8"
-                    />
-                    <Text
-                      style={{ fontSize: rf(16) }}
-                      className="font-inter text-textPrimary-light ml-2"
-                    >
-                      Microscope A
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      paddingHorizontal: rs(16),
-                      paddingVertical: rs(12),
-                      flexDirection: "row",
-                      gap: rs(8),
-                    }}
-                    className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
-                  >
-                    <Feather name="clock" size={rs(20)} color="#112747" />
-                    <Text
-                      style={{ fontSize: rf(14) }}
-                      className="text-textPrimary-light font-inter ml-2"
-                    >
-                      Started: 8:00 AM
-                    </Text>
-                    <View
-                      style={{
-                        paddingHorizontal: rs(12),
-                        paddingVertical: rs(4),
-                      }}
-                      className="bg-[#DADFE5] rounded-[4px]"
-                    >
-                      <Text
-                        style={{ fontSize: rf(14) }}
-                        className="text-textPrimary-light font-inter"
-                      >
-                        3h 55m
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-            </View>
+            )}
           </View>
 
           <View style={{ height: rs(40) }} />
