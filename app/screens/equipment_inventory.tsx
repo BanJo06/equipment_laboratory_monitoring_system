@@ -1,7 +1,13 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ScrollView, Text, View, useWindowDimensions } from "react-native";
+import {
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 export default function EquipmentInventory() {
   const { width } = useWindowDimensions();
@@ -59,59 +65,74 @@ export default function EquipmentInventory() {
         <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
       </View>
 
+      <View className="flex-row justify-start mb-4">
+        <TouchableOpacity
+          style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+          className="bg-mainColor-light rounded-md"
+        >
+          <Text
+            style={{ fontSize: rf(16) }}
+            className="text-white font-inter-bold"
+          >
+            Add Item
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
         nestedScrollEnabled={true}
         showsVerticalScrollIndicator={false}
       >
         <View
-          style={{ padding: rs(16), marginBottom: rs(16) }}
-          className="bg-gray-200 rounded-xl"
+          style={{ padding: rs(32) }}
+          className="bg-white rounded-lg border-[2px] border-borderStrong-light"
         >
-          <View className="flex-row items-center mb-4">
-            <MaterialCommunityIcons
-              name="microscope"
-              size={rs(20)}
-              color="#1d4ed8"
-            />
-            <Text
-              style={{ fontSize: rf(16) }}
-              className="font-inter text-textPrimary-light ml-2"
-            >
-              Microscope A
-            </Text>
-          </View>
           <View
-            style={{
-              paddingHorizontal: rs(16),
-              paddingVertical: rs(12),
-              flexDirection: "row",
-              gap: rs(8),
-            }}
-            className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
+            style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
+            className="flex-row border-b border-[#6684B0]"
           >
-            <Feather name="clock" size={rs(20)} color="#112747" />
             <Text
-              style={{ fontSize: rf(14) }}
-              className="text-textPrimary-light font-inter ml-2"
+              style={{ fontSize: rf(16), flex: 2 }}
+              className="font-inter-bold text-textPrimary-light"
             >
-              Started: 8:00 AM
+              Equipment Name
             </Text>
+            <Text
+              style={{ fontSize: rf(16), flex: 0.5 }}
+              className="text-center font-inter-bold text-textPrimary-light"
+            >
+              Stock
+            </Text>
+            <Text style={{ fontSize: rf(16), flex: 1.2 }}></Text>
+          </View>
+          {["Microscope A", "PCR Machine", "Incubator"].map((item, idx) => (
             <View
-              style={{
-                paddingHorizontal: rs(12),
-                paddingVertical: rs(4),
-              }}
-              className="bg-[#DADFE5] rounded-[4px]"
+              key={idx}
+              style={{ paddingVertical: rs(8) }}
+              className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
             >
               <Text
-                style={{ fontSize: rf(14) }}
-                className="text-textPrimary-light font-inter"
+                style={{ fontSize: rf(16), flex: 2 }}
+                className="font-inter text-textPrimary-light"
+                numberOfLines={1}
               >
-                3h 55m
+                {item}
+              </Text>
+              <Text
+                style={{ fontSize: rf(16), flex: 0.5 }}
+                className="font-inter text-center text-textPrimary-light"
+              >
+                {idx + 1}
+              </Text>
+              <Text
+                style={{ fontSize: rf(16), flex: 1.2 }}
+                className="font-inter text-right text-textPrimary-light"
+              >
+                ...
               </Text>
             </View>
-          </View>
+          ))}
         </View>
       </ScrollView>
     </View>
