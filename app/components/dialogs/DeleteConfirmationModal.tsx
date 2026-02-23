@@ -54,7 +54,7 @@ export default function DeleteConfirmationModal({
             Are you sure that you want to delete this account?
           </Text>
 
-          <View className="flex-row justify-end gap-4">
+          <View className="flex-row justify-end gap-2">
             <TouchableOpacity
               style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
               className="bg-gray-200 rounded-md"
