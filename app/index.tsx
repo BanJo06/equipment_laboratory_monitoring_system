@@ -110,7 +110,7 @@ export default function Index() {
               </Text>
               <TextInput
                 style={{ padding: 12, fontSize: rf(16), borderRadius: 6 }}
-                className="font-inter border border-borderStrong-light text-search-light"
+                className="font-inter border border-borderStrong-light text-textPrimary-light"
                 placeholder="your username"
                 onChangeText={setUsername}
                 value={username}
@@ -125,7 +125,7 @@ export default function Index() {
               </Text>
               <TextInput
                 style={{ padding: 12, fontSize: rf(16), borderRadius: 6 }}
-                className="font-inter border border-borderStrong-light text-search-light"
+                className="font-inter border border-borderStrong-light text-textPrimary-light"
                 placeholder="your password"
                 secureTextEntry
                 onChangeText={setPassword}
@@ -144,7 +144,7 @@ export default function Index() {
               >
                 <Text
                   style={{ fontSize: rf(16) }}
-                  className="font-inter-bold text-textButton-light"
+                  className="font-inter-bold text-white"
                 >
                   Log In
                 </Text>
@@ -157,7 +157,7 @@ export default function Index() {
               >
                 <Text
                   style={{ fontSize: rf(16) }}
-                  className="font-inter-bold text-textButton-light"
+                  className="font-inter-bold text-white"
                 >
                   Admin Log In
                 </Text>
@@ -174,7 +174,7 @@ export default function Index() {
             >
               <Text
                 style={{ fontSize: rf(16) }}
-                className="font-inter-bold text-textButton-light text-center px-4"
+                className="font-inter-bold text-white text-center px-4"
               >
                 Log Out using QR Code
               </Text>

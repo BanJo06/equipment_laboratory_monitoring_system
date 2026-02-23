@@ -47,19 +47,9 @@ module.exports = {
           dark: "#9CA3AF",
         },
 
-        textInsidePrimary: {
-          light: "#FFFFFF",
-          dark: "#FFFFFF",
-        },
-
         textHighlight: {
           light: "#2567CA",
           dark: "#9CA3AF",
-        },
-
-        textButton: {
-          light: "#FFFFFF",
-          dark: "#FFFFFF",
         },
 
         borderStrong: {
@@ -67,22 +57,9 @@ module.exports = {
           dark: "#9CA3AF",
         },
 
-        search: {
-          light: "#B8B8B8",
-          dark: "#9CA3AF",
-        },
-
         bgModal: {
           light: "#FFFFFF",
           dark: "#2A2A2A",
-        },
-        bgTextbox: {
-          light: "#FFFFFF",
-          dark: "#2A2A2A",
-        },
-        textTextbox: {
-          light: "#392F46",
-          dark: "#9CA3AF",
         },
       },
     },
