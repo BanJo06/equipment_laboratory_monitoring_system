@@ -1,12 +1,10 @@
-import AddAccountModal from "@/assets/components/dialogs/AddAccountModal";
-import DeleteConfirmationModal from "@/assets/components/dialogs/DeleteConfirmationModal";
-import StatusModal from "@/assets/components/dialogs/StatusModal";
 import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -14,6 +12,9 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import AddAccountModal from "../components/dialogs/AddAccountModal";
+import DeleteConfirmationModal from "../components/dialogs/DeleteConfirmationModal";
+import StatusModal from "../components/dialogs/StatusModal";
 
 export default function Accounts() {
   const [nameSearch, setNameSearch] = useState("");
@@ -279,40 +280,59 @@ export default function Accounts() {
                     />
                   </TouchableOpacity>
 
+                  {/* Dropdown Options container with integrated overlay */}
                   {activeDropdown === item.id && (
-                    <View
-                      className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
-                      style={{
-                        minWidth: rs(100),
-                        zIndex: 100,
-                        elevation: 5,
-                        marginTop: rs(4),
-                      }}
-                    >
-                      <TouchableOpacity
-                        style={{ padding: rs(10) }}
-                        className="border-b border-borderStrong-light"
-                        onPress={() => openEditModal(item)}
+                    <>
+                      {/* Massive invisible backdrop bound strictly behind the dropdown options */}
+                      <Pressable
+                        style={
+                          {
+                            position: "absolute",
+                            top: -5000,
+                            left: -5000,
+                            width: 10000,
+                            height: 10000,
+                            zIndex: 90,
+                            cursor: "auto", // Web property to avoid pointer finger everywhere
+                          } as any
+                        }
+                        onPress={() => setActiveDropdown(null)}
+                      />
+
+                      <View
+                        className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
+                        style={{
+                          minWidth: rs(100),
+                          zIndex: 100, // Kept at 100 so it sits on top of the Pressable (zIndex 90)
+                          elevation: 5,
+                          marginTop: rs(4),
+                        }}
                       >
-                        <Text
-                          style={{ fontSize: rf(14) }}
-                          className="font-inter text-textPrimary-light"
+                        <TouchableOpacity
+                          style={{ padding: rs(10) }}
+                          className="border-b border-borderStrong-light"
+                          onPress={() => openEditModal(item)}
                         >
-                          Edit
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={{ padding: rs(10) }}
-                        onPress={() => confirmDelete(item.id)}
-                      >
-                        <Text
-                          style={{ fontSize: rf(14) }}
-                          className="font-inter text-red-600"
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="font-inter text-textPrimary-light"
+                          >
+                            Edit
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ padding: rs(10) }}
+                          onPress={() => confirmDelete(item.id)}
                         >
-                          Delete
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="font-inter text-red-600"
+                          >
+                            Delete
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
                   )}
                 </View>
               </View>

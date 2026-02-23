@@ -1,4 +1,3 @@
-import StatusModal from "@/assets/components/dialogs/StatusModal";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,6 +10,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import StatusModal from "../dialogs/StatusModal";
 
 interface AddAccountModalProps {
   visible: boolean;
@@ -216,7 +216,7 @@ export default function AddAccountModal({
                 style={{ color: "red", fontSize: rf(12), marginBottom: rs(16) }}
                 className="font-inter"
               >
-                Input required
+                * Input required
               </Text>
             )}
 
@@ -245,7 +245,7 @@ export default function AddAccountModal({
                 style={{ color: "red", fontSize: rf(12), marginBottom: rs(16) }}
                 className="font-inter"
               >
-                Input required
+                * Input required
               </Text>
             )}
 
@@ -275,7 +275,7 @@ export default function AddAccountModal({
                 style={{ color: "red", fontSize: rf(12), marginBottom: rs(16) }}
                 className="font-inter"
               >
-                Input required
+                * Input required
               </Text>
             )}
 
@@ -314,7 +314,7 @@ export default function AddAccountModal({
                 style={{ color: "red", fontSize: rf(12), marginBottom: rs(16) }}
                 className="font-inter"
               >
-                Input required
+                * Input required
               </Text>
             )}
 
@@ -376,7 +376,7 @@ export default function AddAccountModal({
             </View>
 
             <View
-              className="flex-row justify-end space-x-3 gap-3"
+              className="flex-row justify-end space-x-3 gap-4"
               style={{ zIndex: 1 }}
             >
               <TouchableOpacity
