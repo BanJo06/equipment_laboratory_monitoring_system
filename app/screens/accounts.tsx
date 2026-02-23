@@ -1,8 +1,10 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -31,6 +33,8 @@ export default function Accounts() {
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [isFetching, setIsFetching] = useState(true);
+
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
   const mobileScale = Math.min(width / 430, 1);
@@ -39,7 +43,24 @@ export default function Accounts() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
-  const fetchAccounts = async () => {
+  // New function to load cached data instantly
+  const loadCachedData = async () => {
+    try {
+      const cachedData = await AsyncStorage.getItem("cached_accounts_list");
+      if (cachedData) {
+        setAccountsList(JSON.parse(cachedData));
+        setIsFetching(false); // Stop loading spinner immediately if cache exists
+      }
+    } catch (error) {
+      console.error("Cache load error:", error);
+    }
+
+    // Always fetch fresh data in the background
+    fetchAccounts(false);
+  };
+
+  const fetchAccounts = async (showLoader = true) => {
+    if (showLoader) setIsFetching(true);
     try {
       const { data, error } = await supabase.from("accounts").select("*");
       if (error) {
@@ -48,14 +69,22 @@ export default function Accounts() {
       }
       if (data) {
         setAccountsList(data);
+        // Save the fresh data to cache for the next time the screen is opened
+        await AsyncStorage.setItem(
+          "cached_accounts_list",
+          JSON.stringify(data),
+        );
       }
     } catch (error) {
       console.error("Unexpected fetch error:", error);
+    } finally {
+      setIsFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchAccounts();
+    // Call the cache loader instead of directly calling fetchAccounts on mount
+    loadCachedData();
   }, []);
 
   const openAddModal = () => {
@@ -86,7 +115,7 @@ export default function Accounts() {
         .eq("id", accountToDelete);
       if (error) throw new Error(error.message);
 
-      fetchAccounts();
+      fetchAccounts(false); // Fetch silently after delete
       setDeleteModalVisible(false);
       setSuccessModalVisible(true);
     } catch (error) {
@@ -111,7 +140,7 @@ export default function Accounts() {
         onClose={() => setModalVisible(false)}
         accountToEdit={accountToEdit}
         onSuccess={() => {
-          fetchAccounts();
+          fetchAccounts(false); // Fetch silently after adding/editing
         }}
       />
 
@@ -221,7 +250,17 @@ export default function Accounts() {
             <View style={{ flex: 0.3 }} />
           </View>
 
-          {accountsList.length === 0 ? (
+          {isFetching && accountsList.length === 0 ? (
+            <View style={{ padding: rs(32), alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#1d4ed8" />
+              <Text
+                style={{ marginTop: rs(16), fontSize: rf(14) }}
+                className="font-inter text-textSecondary-light"
+              >
+                Loading accounts...
+              </Text>
+            </View>
+          ) : accountsList.length === 0 ? (
             <Text
               style={{ padding: rs(16), textAlign: "center" }}
               className="font-inter text-textSecondary-light"
@@ -280,10 +319,8 @@ export default function Accounts() {
                     />
                   </TouchableOpacity>
 
-                  {/* Dropdown Options container with integrated overlay */}
                   {activeDropdown === item.id && (
                     <>
-                      {/* Massive invisible backdrop bound strictly behind the dropdown options */}
                       <Pressable
                         style={
                           {
@@ -293,7 +330,7 @@ export default function Accounts() {
                             width: 10000,
                             height: 10000,
                             zIndex: 90,
-                            cursor: "auto", // Web property to avoid pointer finger everywhere
+                            cursor: "auto",
                           } as any
                         }
                         onPress={() => setActiveDropdown(null)}
@@ -303,7 +340,7 @@ export default function Accounts() {
                         className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
                         style={{
                           minWidth: rs(100),
-                          zIndex: 100, // Kept at 100 so it sits on top of the Pressable (zIndex 90)
+                          zIndex: 100,
                           elevation: 5,
                           marginTop: rs(4),
                         }}
