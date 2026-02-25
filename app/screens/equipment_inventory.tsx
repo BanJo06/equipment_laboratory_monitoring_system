@@ -1,8 +1,11 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -10,12 +13,31 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AddEquipmentModal from "../components/dialogs/AddEquipmentModal";
+import DeleteEquipmentModal from "../components/dialogs/DeleteEquipmentModal";
+import EquipmentDetailsModal from "../components/dialogs/EquipmentDetailsModal"; // New Import
+import StatusModal from "../components/dialogs/StatusModal";
 
 export default function EquipmentInventory() {
   const { width } = useWindowDimensions();
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+
+  const [equipmentToEdit, setEquipmentToEdit] = useState<any>(null);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  // States for deleting
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [equipmentToDelete, setEquipmentToDelete] = useState<string | null>(
+    null,
+  );
+
+  // States for viewing details
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedEquipmentDetails, setSelectedEquipmentDetails] =
+    useState<any>(null);
 
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
@@ -25,20 +47,71 @@ export default function EquipmentInventory() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
-  const fetchEquipment = async () => {
-    const { data, error } = await supabase
-      .from("equipment_inventory")
-      .select("*")
-      .order("id", { ascending: true });
+  const loadCachedData = async () => {
+    try {
+      const cachedData = await AsyncStorage.getItem("cached_equipment_list");
+      if (cachedData) {
+        setEquipmentList(JSON.parse(cachedData));
+        setIsFetching(false);
+      }
+    } catch (error) {
+      console.error("Cache load error:", error);
+    }
+    fetchEquipment(false);
+  };
 
-    if (!error && data) {
-      setEquipmentList(data);
+  const fetchEquipment = async (showLoader = true) => {
+    if (showLoader) setIsFetching(true);
+    try {
+      const { data, error } = await supabase
+        .from("equipment_inventory")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("Fetch error:", error.message);
+        return;
+      }
+      if (data) {
+        setEquipmentList(data);
+        await AsyncStorage.setItem(
+          "cached_equipment_list",
+          JSON.stringify(data),
+        );
+      }
+    } catch (error) {
+      console.error("Unexpected fetch error:", error);
+    } finally {
+      setIsFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchEquipment();
+    loadCachedData();
   }, []);
+
+  const openAddModal = () => {
+    setEquipmentToEdit(null);
+    setIsAddModalVisible(true);
+  };
+
+  const openEditModal = (item: any) => {
+    setEquipmentToEdit(item);
+    setActiveDropdown(null);
+    setIsAddModalVisible(true);
+  };
+
+  const openDetailsModal = (item: any) => {
+    setActiveDropdown(null);
+    setSelectedEquipmentDetails(item);
+    setDetailsModalVisible(true);
+  };
+
+  const confirmDelete = (id: string) => {
+    setActiveDropdown(null);
+    setEquipmentToDelete(id);
+    setDeleteModalVisible(true);
+  };
 
   return (
     <View
@@ -49,6 +122,38 @@ export default function EquipmentInventory() {
       }}
       className="bg-white rounded-lg shadow-sm"
     >
+      <AddEquipmentModal
+        visible={isAddModalVisible}
+        onClose={() => setIsAddModalVisible(false)}
+        equipmentToEdit={equipmentToEdit}
+        onSuccess={() => {
+          fetchEquipment(false);
+        }}
+      />
+
+      <DeleteEquipmentModal
+        visible={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        equipmentId={equipmentToDelete}
+        onSuccess={() => {
+          fetchEquipment(false);
+          setSuccessModalVisible(true);
+        }}
+      />
+
+      <EquipmentDetailsModal
+        visible={detailsModalVisible}
+        onClose={() => setDetailsModalVisible(false)}
+        equipment={selectedEquipmentDetails}
+      />
+
+      <StatusModal
+        visible={successModalVisible}
+        title="Success"
+        message="Item successfully deleted."
+        onClose={() => setSuccessModalVisible(false)}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -88,7 +193,7 @@ export default function EquipmentInventory() {
         <TouchableOpacity
           style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
           className="bg-mainColor-light rounded-md"
-          onPress={() => setIsAddModalVisible(true)}
+          onPress={openAddModal}
         >
           <Text
             style={{ fontSize: rf(16) }}
@@ -100,7 +205,7 @@ export default function EquipmentInventory() {
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, overflow: "visible" }}
         nestedScrollEnabled={true}
         showsVerticalScrollIndicator={false}
       >
@@ -124,67 +229,142 @@ export default function EquipmentInventory() {
             >
               Stock
             </Text>
-            <Text style={{ fontSize: rf(16), flex: 1.2 }}></Text>
+            <View style={{ flex: 1.2 }} />
           </View>
 
-          {equipmentList.map((item, idx) => (
-            <View
-              key={item.id || idx}
-              style={{ paddingVertical: rs(8) }}
-              className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
-            >
+          {isFetching && equipmentList.length === 0 ? (
+            <View style={{ padding: rs(32), alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#1d4ed8" />
               <Text
-                style={{ fontSize: rf(16), flex: 2 }}
-                className="font-inter text-textPrimary-light"
-                numberOfLines={1}
+                style={{ marginTop: rs(16), fontSize: rf(14) }}
+                className="font-inter text-textSecondary-light"
               >
-                {item.name}
+                Loading equipment...
               </Text>
-              <Text
-                style={{ fontSize: rf(16), flex: 0.5 }}
-                className="font-inter text-center text-textPrimary-light"
-              >
-                {item.units}
-              </Text>
-              <View
-                style={{
-                  flex: 1.2,
-                  alignItems: "flex-end",
-                  paddingRight: rs(8),
-                }}
-              >
-                <TouchableOpacity>
-                  <Feather
-                    name="more-horizontal"
-                    size={rs(20)}
-                    color="#112747"
-                  />
-                </TouchableOpacity>
-              </View>
             </View>
-          ))}
-
-          {equipmentList.length === 0 && (
+          ) : equipmentList.length === 0 ? (
             <Text
-              style={{
-                fontSize: rf(16),
-                textAlign: "center",
-                marginTop: rs(16),
-                color: "#6684B0",
-              }}
-              className="font-inter"
+              style={{ padding: rs(16), textAlign: "center", fontSize: rf(16) }}
+              className="font-inter text-[#6684B0]"
             >
               No equipment found. Add an item to get started.
             </Text>
+          ) : (
+            equipmentList.map((item, idx) => (
+              <View
+                key={item.id || idx}
+                style={{
+                  paddingVertical: rs(12),
+                  zIndex: activeDropdown === item.id ? 10 : 1,
+                }}
+                className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
+              >
+                <Text
+                  style={{ fontSize: rf(16), flex: 2 }}
+                  className="font-inter text-textPrimary-light"
+                  numberOfLines={1}
+                >
+                  {item.name}
+                </Text>
+                <Text
+                  style={{ fontSize: rf(16), flex: 0.5 }}
+                  className="font-inter text-center text-textPrimary-light"
+                >
+                  {item.units}
+                </Text>
+
+                <View
+                  style={{
+                    flex: 1.2,
+                    alignItems: "flex-end",
+                    position: "relative",
+                  }}
+                >
+                  <TouchableOpacity
+                    style={{ padding: rs(4), marginRight: rs(8) }}
+                    onPress={() =>
+                      setActiveDropdown(
+                        activeDropdown === item.id ? null : item.id,
+                      )
+                    }
+                  >
+                    <Feather
+                      name="more-horizontal"
+                      size={rs(20)}
+                      color="#112747"
+                    />
+                  </TouchableOpacity>
+
+                  {activeDropdown === item.id && (
+                    <>
+                      <Pressable
+                        style={
+                          {
+                            position: "absolute",
+                            top: -5000,
+                            left: -5000,
+                            width: 10000,
+                            height: 10000,
+                            zIndex: 90,
+                            cursor: "auto",
+                          } as any
+                        }
+                        onPress={() => setActiveDropdown(null)}
+                      />
+
+                      <View
+                        className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
+                        style={{
+                          minWidth: rs(100),
+                          zIndex: 100,
+                          elevation: 5,
+                          marginTop: rs(4),
+                        }}
+                      >
+                        <TouchableOpacity
+                          style={{ padding: rs(10) }}
+                          className="border-b border-borderStrong-light"
+                          onPress={() => openDetailsModal(item)}
+                        >
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="font-inter text-textPrimary-light"
+                          >
+                            Details
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ padding: rs(10) }}
+                          className="border-b border-borderStrong-light"
+                          onPress={() => openEditModal(item)}
+                        >
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="font-inter text-textPrimary-light"
+                          >
+                            Edit
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ padding: rs(10) }}
+                          onPress={() => confirmDelete(item.id)}
+                        >
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="font-inter text-red-600"
+                          >
+                            Delete
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </View>
+              </View>
+            ))
           )}
         </View>
       </ScrollView>
-
-      <AddEquipmentModal
-        visible={isAddModalVisible}
-        onClose={() => setIsAddModalVisible(false)}
-        onSuccess={fetchEquipment}
-      />
     </View>
   );
 }

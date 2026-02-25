@@ -106,6 +106,8 @@ export default function AddEquipmentModal({
     }
 
     setIsLoading(true);
+
+    // Data object matching the equipment_inventory table columns
     const equipmentData = {
       name: equipmentName,
       units: parseInt(units, 10) || 0,
@@ -115,6 +117,7 @@ export default function AddEquipmentModal({
 
     try {
       if (equipmentToEdit) {
+        // EDIT LOGIC: Make sure this targets "equipment_inventory"
         const { error } = await supabase
           .from("equipment_inventory")
           .update(equipmentData)
@@ -123,6 +126,7 @@ export default function AddEquipmentModal({
         if (error) throw new Error(error.message);
         triggerStatus("Success", "Equipment successfully updated.");
       } else {
+        // ADD LOGIC: Make sure this targets "equipment_inventory"
         const { error } = await supabase
           .from("equipment_inventory")
           .insert([equipmentData]);
@@ -137,7 +141,8 @@ export default function AddEquipmentModal({
         const offlineEquipment = existingOfflineData
           ? JSON.parse(existingOfflineData)
           : [];
-        offlineEquipment.push(equipmentData);
+
+        offlineEquipment.push({ ...equipmentData, id: Date.now().toString() }); // Assign a temporary ID for offline edits
         await AsyncStorage.setItem(
           "offline_equipment",
           JSON.stringify(offlineEquipment),
