@@ -236,13 +236,19 @@ export default function Accounts() {
               Full Name
             </Text>
             <Text
-              style={{ fontSize: rf(16), flex: 1 }}
-              className="text-center font-inter-bold text-textPrimary-light"
+              style={{ fontSize: rf(16), flex: 2 }}
+              className="text-left font-inter-bold text-textPrimary-light"
             >
               Username
             </Text>
             <Text
               style={{ fontSize: rf(16), flex: 1 }}
+              className="text-left font-inter-bold text-textPrimary-light"
+            >
+              Role
+            </Text>
+            <Text
+              style={{ fontSize: rf(16), flex: 0.5 }}
               className="text-right font-inter-bold text-textPrimary-light"
             >
               Status
@@ -285,13 +291,19 @@ export default function Accounts() {
                   {item.first_name} {item.last_name}
                 </Text>
                 <Text
-                  style={{ fontSize: rf(16), flex: 1 }}
-                  className="font-inter text-center text-textPrimary-light"
+                  style={{ fontSize: rf(16), flex: 2 }}
+                  className="font-inter text-left text-textPrimary-light"
                 >
                   {item.username}
                 </Text>
                 <Text
                   style={{ fontSize: rf(16), flex: 1 }}
+                  className="font-inter text-left text-textPrimary-light capitalize"
+                >
+                  {item.role || "user"}
+                </Text>
+                <Text
+                  style={{ fontSize: rf(16), flex: 0.5 }}
                   className="font-inter text-right text-textPrimary-light"
                 >
                   Online
