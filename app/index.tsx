@@ -118,7 +118,11 @@ export default function Index() {
     // Navigate with parameters
     router.push({
       pathname: "/user_dashboard",
-      params: { id: data.id, first_name: data.first_name },
+      params: {
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+      },
     });
   };
 

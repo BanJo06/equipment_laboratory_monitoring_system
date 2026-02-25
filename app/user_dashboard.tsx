@@ -10,12 +10,14 @@ import React, { useState } from "react";
 import {
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
 
 export default function UserDashboard() {
@@ -23,11 +25,21 @@ export default function UserDashboard() {
   const router = useRouter();
 
   // Extract parameters passed from the login screen
-  const { id, first_name } = useLocalSearchParams();
+  const { id, first_name, last_name } = useLocalSearchParams();
 
   // Modal state management
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isEquipmentModalVisible, setEquipmentModalVisible] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // NEW: Time and session states
+  const [timeMode, setTimeMode] = useState<"now" | "manual">("now");
+  const [manualTime, setManualTime] = useState("");
+  const [isStartingSession, setIsStartingSession] = useState(false);
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
@@ -37,8 +49,8 @@ export default function UserDashboard() {
   const scale = isMobile ? mobileScale : desktopScale;
 
   // Scaling helpers
-  const rf = (size) => size * scale;
-  const rs = (size) => size * scale;
+  const rf = (size: number) => size * scale;
+  const rs = (size: number) => size * scale;
 
   // Triggered when clicking the top-right Logout button
   const handleLogoutPress = () => {
@@ -58,6 +70,58 @@ export default function UserDashboard() {
     router.replace("/");
   };
 
+  const handleStartSession = async () => {
+    if (!selectedEquipment) {
+      alert("Please select an equipment first.");
+      return;
+    }
+
+    if (timeMode === "manual" && !manualTime.trim()) {
+      alert("Please enter a manual time.");
+      return;
+    }
+
+    setIsStartingSession(true);
+
+    // Format current date as YYYY-MM-DD
+    const currentDate = new Date().toISOString().split("T")[0];
+
+    // Format time appropriately based on selected mode
+    const timeIn =
+      timeMode === "now"
+        ? new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : manualTime;
+
+    // Construct full name
+    const fullName = `${first_name || "Unknown"} ${last_name || ""}`.trim();
+
+    // Insert into Supabase
+    const { error } = await supabase.from("equipment_logs").insert([
+      {
+        full_name: fullName,
+        equipment_name: selectedEquipment.name,
+        date: currentDate,
+        time_in: timeIn,
+      },
+    ]);
+
+    setIsStartingSession(false);
+
+    if (error) {
+      console.error("Insert error:", error);
+      alert("Failed to start session. Please try again.");
+    } else {
+      alert("Session started successfully!");
+      // Reset form
+      setSelectedEquipment(null);
+      setManualTime("");
+      setTimeMode("now");
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <LogoutConfirmationModal
@@ -66,8 +130,14 @@ export default function UserDashboard() {
         onConfirm={confirmLogout}
         isLoggingOut={isLoggingOut}
       />
+
+      <ChooseEquipmentModal
+        visible={isEquipmentModalVisible}
+        onClose={() => setEquipmentModalVisible(false)}
+        onSelect={(equipment) => setSelectedEquipment(equipment)}
+      />
+
       <View className="flex-1 bg-bgPrimary-light">
-        {/* <Stack.Screen options={{ headerShown: false }} /> */}
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ padding: rs(24) }}
@@ -111,7 +181,7 @@ export default function UserDashboard() {
                 <TouchableOpacity
                   style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
                   className="bg-mainColor-light rounded-md"
-                  onPress={handleLogoutPress} // Opens the modal
+                  onPress={handleLogoutPress}
                 >
                   <Text
                     style={{ fontSize: rf(16) }}
@@ -184,18 +254,21 @@ export default function UserDashboard() {
                       Select Equipment
                     </Text>
                   </View>
-                  <View
+                  <TouchableOpacity
                     style={{ padding: rs(12) }}
                     className="bg-[#EBEDF0] rounded-lg flex-row justify-between items-center mt-2"
+                    onPress={() => setEquipmentModalVisible(true)}
                   >
                     <Text
                       style={{ fontSize: rf(14) }}
                       className="text-textPrimary-light font-inter"
                     >
-                      Choose equipment
+                      {selectedEquipment
+                        ? selectedEquipment.name
+                        : "Choose equipment"}
                     </Text>
                     <Feather name="chevron-down" size={rs(20)} color="gray" />
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 <View
@@ -220,58 +293,105 @@ export default function UserDashboard() {
                     </Text>
                   </View>
                   <View style={{ marginBottom: rs(8) }} className="flex-row">
-                    <View
+                    {/* UPDATED: Manual Entry Radio Button */}
+                    <TouchableOpacity
                       style={{ marginRight: rs(16) }}
                       className="flex-row items-center"
+                      onPress={() => setTimeMode("manual")}
                     >
-                      <View className="h-5 w-5 rounded-full border-2 border-blue-600 bg-blue-600 items-center justify-center mr-2">
-                        <View className="h-2 w-2 rounded-full bg-white" />
-                      </View>
-                      <Text
-                        style={{ fontSize: rf(14) }}
-                        className="text-textPrimary-light font-inter"
+                      <View
+                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${
+                          timeMode === "manual"
+                            ? "border-blue-600 bg-blue-600"
+                            : "border-gray-400 bg-white"
+                        }`}
                       >
-                        Dropdown
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <View className="h-5 w-5 rounded-full border-2 border-gray-400 bg-white mr-2" />
+                        {timeMode === "manual" && (
+                          <View className="h-2 w-2 rounded-full bg-white" />
+                        )}
+                      </View>
                       <Text
                         style={{ fontSize: rf(14) }}
                         className="text-textPrimary-light font-inter"
                       >
                         Manual Entry
                       </Text>
-                    </View>
+                    </TouchableOpacity>
+
+                    {/* UPDATED: Start Now Radio Button */}
+                    <TouchableOpacity
+                      className="flex-row items-center"
+                      onPress={() => setTimeMode("now")}
+                    >
+                      <View
+                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${
+                          timeMode === "now"
+                            ? "border-blue-600 bg-blue-600"
+                            : "border-gray-400 bg-white"
+                        }`}
+                      >
+                        {timeMode === "now" && (
+                          <View className="h-2 w-2 rounded-full bg-white" />
+                        )}
+                      </View>
+                      <Text
+                        style={{ fontSize: rf(14) }}
+                        className="text-textPrimary-light font-inter"
+                      >
+                        Start Now
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {/* UPDATED: Time Input Box */}
                   <View
                     style={{ padding: rs(12) }}
-                    className="bg-white rounded-lg flex-row justify-between items-center mt-2"
+                    className={`rounded-lg flex-row justify-between items-center mt-2 ${
+                      timeMode === "manual" ? "bg-white" : "bg-gray-300"
+                    }`}
                   >
-                    <Text
-                      style={{ fontSize: rf(14) }}
+                    <TextInput
+                      style={[
+                        { fontSize: rf(14), flex: 1, padding: 0 },
+                        { outlineStyle: "none" } as any,
+                      ]}
                       className="text-textPrimary-light font-inter"
-                    >
-                      11:45 AM
-                    </Text>
-                    <Feather name="chevron-down" size={rs(20)} color="gray" />
+                      placeholder={
+                        timeMode === "now"
+                          ? "Current time will be recorded"
+                          : "e.g., 11:45 AM"
+                      }
+                      value={timeMode === "now" ? "" : manualTime}
+                      onChangeText={setManualTime}
+                      editable={timeMode === "manual"}
+                    />
+                    {timeMode === "manual" && (
+                      <Feather name="edit-2" size={rs(16)} color="gray" />
+                    )}
                   </View>
                 </View>
 
+                {/* UPDATED: Start Button triggers handleStartSession */}
                 <TouchableOpacity
                   style={{ paddingVertical: rs(16) }}
-                  className="bg-mainColor-light rounded-md items-center justify-center w-full"
+                  className={`rounded-md items-center justify-center w-full ${
+                    isStartingSession ? "bg-blue-400" : "bg-mainColor-light"
+                  }`}
+                  onPress={handleStartSession}
+                  disabled={isStartingSession}
                 >
                   <Text
                     style={{ fontSize: rf(18) }}
                     className="text-white font-inter-bold"
                   >
-                    Start Using Equipment
+                    {isStartingSession
+                      ? "Starting..."
+                      : "Start Using Equipment"}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Available Equipments Table - PERSISTENT LAST USED COLUMN */}
+              {/* 3. Available Equipments Table */}
               <View
                 style={{ padding: rs(32), marginBottom: rs(24) }}
                 className="bg-white rounded-lg shadow-sm"
@@ -314,7 +434,9 @@ export default function UserDashboard() {
                     <View
                       key={idx}
                       style={{ paddingVertical: rs(8) }}
-                      className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
+                      className={`flex-row items-center ${
+                        idx !== 2 ? "border-b border-[#DADFE5]" : ""
+                      }`}
                     >
                       <Text
                         style={{ fontSize: rf(14), flex: 2 }}
@@ -566,7 +688,6 @@ export default function UserDashboard() {
               </View>
             </View>
           </View>
-          <View style={{ height: rs(40) }} />
         </ScrollView>
       </View>
     </SafeAreaView>
