@@ -10,3 +10,5 @@ create table public.accounts (
 
 -- Temporarily disable Row Level Security (RLS) to allow development saving
 alter table public.accounts disable row level security;
+
+alter table public.accounts add column "isOnline" boolean default false;

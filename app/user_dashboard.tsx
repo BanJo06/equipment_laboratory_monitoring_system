@@ -5,7 +5,8 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import React from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   ScrollView,
   Text,
@@ -14,9 +15,19 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../lib/supabase";
+import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
 
 export default function UserDashboard() {
   const { width } = useWindowDimensions();
+  const router = useRouter();
+
+  // Extract parameters passed from the login screen
+  const { id, first_name } = useLocalSearchParams();
+
+  // Modal state management
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
@@ -29,8 +40,32 @@ export default function UserDashboard() {
   const rf = (size) => size * scale;
   const rs = (size) => size * scale;
 
+  // Triggered when clicking the top-right Logout button
+  const handleLogoutPress = () => {
+    setLogoutModalVisible(true);
+  };
+
+  // Triggered when confirming inside the modal
+  const confirmLogout = async () => {
+    setIsLoggingOut(true);
+
+    if (id) {
+      await supabase.from("accounts").update({ isOnline: false }).eq("id", id);
+    }
+
+    setIsLoggingOut(false);
+    setLogoutModalVisible(false);
+    router.replace("/");
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <LogoutConfirmationModal
+        visible={isLogoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+        onConfirm={confirmLogout}
+        isLoggingOut={isLoggingOut}
+      />
       <View className="flex-1 bg-bgPrimary-light">
         {/* <Stack.Screen options={{ headerShown: false }} /> */}
         <ScrollView
@@ -64,7 +99,7 @@ export default function UserDashboard() {
                     style={{ fontSize: rf(34) }}
                     className="font-inter-bold text-textPrimary-light"
                   >
-                    Hello, Juan!
+                    Hello, {first_name || "User"}!
                   </Text>
                   <Text
                     style={{ fontSize: rf(16) }}
@@ -76,6 +111,7 @@ export default function UserDashboard() {
                 <TouchableOpacity
                   style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
                   className="bg-mainColor-light rounded-md"
+                  onPress={handleLogoutPress} // Opens the modal
                 >
                   <Text
                     style={{ fontSize: rf(16) }}
