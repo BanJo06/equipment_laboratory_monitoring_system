@@ -1,0 +1,12 @@
+create table public.accounts (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  first_name text not null,
+  last_name text not null,
+  username text not null unique,
+  password text not null,
+  role text not null default 'User'
+);
+
+-- Temporarily disable Row Level Security (RLS) to allow development saving
+alter table public.accounts disable row level security;

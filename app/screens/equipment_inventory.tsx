@@ -1,6 +1,7 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
+import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -8,18 +9,36 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import AddEquipmentModal from "../components/dialogs/AddEquipmentModal";
 
 export default function EquipmentInventory() {
   const { width } = useWindowDimensions();
 
-  // --- RESPONSIVE MATH ---
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
   const mobileScale = Math.min(width / 430, 1);
   const scale = isMobile ? mobileScale : desktopScale;
 
-  const rf = (size) => size * scale;
-  const rs = (size) => size * scale;
+  const rf = (size: number) => size * scale;
+  const rs = (size: number) => size * scale;
+
+  const fetchEquipment = async () => {
+    const { data, error } = await supabase
+      .from("equipment_inventory")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (!error && data) {
+      setEquipmentList(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchEquipment();
+  }, []);
 
   return (
     <View
@@ -69,6 +88,7 @@ export default function EquipmentInventory() {
         <TouchableOpacity
           style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
           className="bg-mainColor-light rounded-md"
+          onPress={() => setIsAddModalVisible(true)}
         >
           <Text
             style={{ fontSize: rf(16) }}
@@ -90,7 +110,7 @@ export default function EquipmentInventory() {
         >
           <View
             style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
-            className="flex-row border-b border-[#6684B0]"
+            className="flex-row border-b border-[#6684B0] items-center"
           >
             <Text
               style={{ fontSize: rf(16), flex: 2 }}
@@ -106,35 +126,65 @@ export default function EquipmentInventory() {
             </Text>
             <Text style={{ fontSize: rf(16), flex: 1.2 }}></Text>
           </View>
-          {["Microscope A", "PCR Machine", "Incubator"].map((item, idx) => (
+
+          {equipmentList.map((item, idx) => (
             <View
-              key={idx}
+              key={item.id || idx}
               style={{ paddingVertical: rs(8) }}
-              className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
+              className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
             >
               <Text
                 style={{ fontSize: rf(16), flex: 2 }}
                 className="font-inter text-textPrimary-light"
                 numberOfLines={1}
               >
-                {item}
+                {item.name}
               </Text>
               <Text
                 style={{ fontSize: rf(16), flex: 0.5 }}
                 className="font-inter text-center text-textPrimary-light"
               >
-                {idx + 1}
+                {item.units}
               </Text>
-              <Text
-                style={{ fontSize: rf(16), flex: 1.2 }}
-                className="font-inter text-right text-textPrimary-light"
+              <View
+                style={{
+                  flex: 1.2,
+                  alignItems: "flex-end",
+                  paddingRight: rs(8),
+                }}
               >
-                ...
-              </Text>
+                <TouchableOpacity>
+                  <Feather
+                    name="more-horizontal"
+                    size={rs(20)}
+                    color="#112747"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
+
+          {equipmentList.length === 0 && (
+            <Text
+              style={{
+                fontSize: rf(16),
+                textAlign: "center",
+                marginTop: rs(16),
+                color: "#6684B0",
+              }}
+              className="font-inter"
+            >
+              No equipment found. Add an item to get started.
+            </Text>
+          )}
         </View>
       </ScrollView>
+
+      <AddEquipmentModal
+        visible={isAddModalVisible}
+        onClose={() => setIsAddModalVisible(false)}
+        onSuccess={fetchEquipment}
+      />
     </View>
   );
 }
