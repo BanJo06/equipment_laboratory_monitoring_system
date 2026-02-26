@@ -43,19 +43,16 @@ export default function Accounts() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
-  // New function to load cached data instantly
   const loadCachedData = async () => {
     try {
       const cachedData = await AsyncStorage.getItem("cached_accounts_list");
       if (cachedData) {
         setAccountsList(JSON.parse(cachedData));
-        setIsFetching(false); // Stop loading spinner immediately if cache exists
+        setIsFetching(false);
       }
     } catch (error) {
       console.error("Cache load error:", error);
     }
-
-    // Always fetch fresh data in the background
     fetchAccounts(false);
   };
 
@@ -69,7 +66,6 @@ export default function Accounts() {
       }
       if (data) {
         setAccountsList(data);
-        // Save the fresh data to cache for the next time the screen is opened
         await AsyncStorage.setItem(
           "cached_accounts_list",
           JSON.stringify(data),
@@ -83,7 +79,6 @@ export default function Accounts() {
   };
 
   useEffect(() => {
-    // Call the cache loader instead of directly calling fetchAccounts on mount
     loadCachedData();
   }, []);
 
@@ -115,7 +110,7 @@ export default function Accounts() {
         .eq("id", accountToDelete);
       if (error) throw new Error(error.message);
 
-      fetchAccounts(false); // Fetch silently after delete
+      fetchAccounts(false);
       setDeleteModalVisible(false);
       setSuccessModalVisible(true);
     } catch (error) {
@@ -125,6 +120,11 @@ export default function Accounts() {
       setAccountToDelete(null);
     }
   };
+
+  const filteredAccounts = accountsList.filter((account) => {
+    const fullName = `${account.first_name} ${account.last_name}`.toLowerCase();
+    return fullName.includes(nameSearch.toLowerCase());
+  });
 
   return (
     <View
@@ -140,7 +140,7 @@ export default function Accounts() {
         onClose={() => setModalVisible(false)}
         accountToEdit={accountToEdit}
         onSuccess={() => {
-          fetchAccounts(false); // Fetch silently after adding/editing
+          fetchAccounts(false);
         }}
       />
 
@@ -208,187 +208,209 @@ export default function Accounts() {
         </TouchableOpacity>
 
         <TextInput
-          style={{ padding: 12, fontSize: rf(16), borderRadius: 6 }}
-          className="font-inter border border-borderStrong-light text-textPrimary-light"
-          placeholder="Search name"
+          style={[
+            {
+              padding: rs(12),
+              fontSize: rf(14),
+              borderRadius: 6,
+              minWidth: rs(200),
+            },
+            { outlineStyle: "none" } as any,
+          ]}
+          className="font-inter border border-borderStrong-light text-textPrimary-light bg-[#F8FAFC]"
+          placeholder="Search name..."
           onChangeText={setNameSearch}
           value={nameSearch}
         />
       </View>
 
-      <ScrollView
-        style={{ flex: 1, overflow: "visible" }}
-        nestedScrollEnabled={true}
-        showsVerticalScrollIndicator={false}
+      {/* TABLE OUTER CONTAINER */}
+      <View
+        style={{ padding: rs(32), zIndex: 10 }}
+        className="bg-white rounded-lg border-[2px] border-borderStrong-light"
       >
+        {/* Fixed Table Header */}
         <View
-          style={{ padding: rs(32) }}
-          className="bg-white rounded-lg border-[2px] border-borderStrong-light"
+          style={{ paddingBottom: rs(8), marginBottom: rs(8), zIndex: 11 }}
+          className="flex-row border-b border-[#6684B0] items-center"
         >
-          <View
-            style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
-            className="flex-row border-b border-[#6684B0]"
+          <Text
+            style={{ fontSize: rf(16), flex: 2 }}
+            className="font-inter-bold text-textPrimary-light"
           >
-            <Text
-              style={{ fontSize: rf(16), flex: 2 }}
-              className="font-inter-bold text-textPrimary-light"
-            >
-              Full Name
-            </Text>
-            <Text
-              style={{ fontSize: rf(16), flex: 2 }}
-              className="text-left font-inter-bold text-textPrimary-light"
-            >
-              Username
-            </Text>
-            <Text
-              style={{ fontSize: rf(16), flex: 1 }}
-              className="text-left font-inter-bold text-textPrimary-light"
-            >
-              Role
-            </Text>
-            <Text
-              style={{ fontSize: rf(16), flex: 0.5 }}
-              className="text-right font-inter-bold text-textPrimary-light"
-            >
-              Status
-            </Text>
-            <View style={{ flex: 0.3 }} />
-          </View>
+            Full Name
+          </Text>
+          <Text
+            style={{ fontSize: rf(16), flex: 2 }}
+            className="text-left font-inter-bold text-textPrimary-light"
+          >
+            Username
+          </Text>
+          <Text
+            style={{ fontSize: rf(16), flex: 1 }}
+            className="text-left font-inter-bold text-textPrimary-light"
+          >
+            Role
+          </Text>
+          <Text
+            style={{ fontSize: rf(16), flex: 0.5 }}
+            className="text-right font-inter-bold text-textPrimary-light"
+          >
+            Status
+          </Text>
+          <View style={{ flex: 0.3 }} />
+        </View>
 
-          {isFetching && accountsList.length === 0 ? (
-            <View style={{ padding: rs(32), alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#1d4ed8" />
+        {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
+        <View style={{ height: rs(544), zIndex: 10 }}>
+          <ScrollView
+            style={{ flex: 1, overflow: "visible" }}
+            contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }}
+            nestedScrollEnabled={true}
+            showsVerticalScrollIndicator={true}
+          >
+            {isFetching && accountsList.length === 0 ? (
+              <View style={{ padding: rs(32), alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#1d4ed8" />
+                <Text
+                  style={{ marginTop: rs(16), fontSize: rf(14) }}
+                  className="font-inter text-textSecondary-light"
+                >
+                  Loading accounts...
+                </Text>
+              </View>
+            ) : filteredAccounts.length === 0 ? (
               <Text
-                style={{ marginTop: rs(16), fontSize: rf(14) }}
+                style={{
+                  padding: rs(16),
+                  textAlign: "center",
+                  fontSize: rf(16),
+                }}
                 className="font-inter text-textSecondary-light"
               >
-                Loading accounts...
+                No accounts found.
               </Text>
-            </View>
-          ) : accountsList.length === 0 ? (
-            <Text
-              style={{ padding: rs(16), textAlign: "center" }}
-              className="font-inter text-textSecondary-light"
-            >
-              No accounts found.
-            </Text>
-          ) : (
-            accountsList.map((item, idx) => (
-              <View
-                key={item.id || idx}
-                style={{
-                  paddingVertical: rs(12),
-                  zIndex: activeDropdown === item.id ? 10 : 1,
-                }}
-                className={`flex-row items-center ${idx !== accountsList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
-              >
-                <Text
-                  style={{ fontSize: rf(16), flex: 2 }}
-                  className="font-inter text-textPrimary-light"
-                  numberOfLines={1}
-                >
-                  {item.first_name} {item.last_name}
-                </Text>
-                <Text
-                  style={{ fontSize: rf(16), flex: 2 }}
-                  className="font-inter text-left text-textPrimary-light"
-                >
-                  {item.username}
-                </Text>
-                <Text
-                  style={{ fontSize: rf(16), flex: 1 }}
-                  className="font-inter text-left text-textPrimary-light capitalize"
-                >
-                  {item.role || "user"}
-                </Text>
-                <Text
-                  style={{ fontSize: rf(16), flex: 0.5 }}
-                  className="font-inter text-right text-textPrimary-light"
-                >
-                  Online
-                </Text>
-
+            ) : (
+              filteredAccounts.map((item, idx) => (
                 <View
+                  key={item.id || idx}
                   style={{
-                    flex: 0.3,
-                    alignItems: "flex-end",
-                    position: "relative",
+                    paddingVertical: rs(12),
+                    zIndex: activeDropdown === item.id ? 10 : 1,
                   }}
+                  className={`flex-row items-center ${idx !== filteredAccounts.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
                 >
-                  <TouchableOpacity
-                    style={{ padding: rs(4) }}
-                    onPress={() =>
-                      setActiveDropdown(
-                        activeDropdown === item.id ? null : item.id,
-                      )
-                    }
+                  <Text
+                    style={{ fontSize: rf(16), flex: 2 }}
+                    className="font-inter text-textPrimary-light"
+                    numberOfLines={1}
                   >
-                    <Feather
-                      name="more-vertical"
-                      size={rs(20)}
-                      color="#112747"
-                    />
-                  </TouchableOpacity>
+                    {item.first_name} {item.last_name}
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(16), flex: 2 }}
+                    className="font-inter text-left text-textPrimary-light"
+                  >
+                    {item.username}
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(16), flex: 1 }}
+                    className="font-inter text-left text-textPrimary-light capitalize"
+                  >
+                    {item.role || "user"}
+                  </Text>
 
-                  {activeDropdown === item.id && (
-                    <>
-                      <Pressable
-                        style={
-                          {
-                            position: "absolute",
-                            top: -5000,
-                            left: -5000,
-                            width: 10000,
-                            height: 10000,
-                            zIndex: 90,
-                            cursor: "auto",
-                          } as any
-                        }
-                        onPress={() => setActiveDropdown(null)}
+                  {/* --- DYNAMIC STATUS TEXT --- */}
+                  <Text
+                    style={{ fontSize: rf(16), flex: 0.5 }}
+                    className={`font-inter text-right ${
+                      item.isOnline ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {item.isOnline ? "Online" : "Offline"}
+                  </Text>
+
+                  <View
+                    style={{
+                      flex: 0.3,
+                      alignItems: "flex-end",
+                      position: "relative",
+                    }}
+                  >
+                    <TouchableOpacity
+                      style={{ padding: rs(4) }}
+                      onPress={() =>
+                        setActiveDropdown(
+                          activeDropdown === item.id ? null : item.id,
+                        )
+                      }
+                    >
+                      <Feather
+                        name="more-vertical"
+                        size={rs(20)}
+                        color="#112747"
                       />
+                    </TouchableOpacity>
 
-                      <View
-                        className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
-                        style={{
-                          minWidth: rs(100),
-                          zIndex: 100,
-                          elevation: 5,
-                          marginTop: rs(4),
-                        }}
-                      >
-                        <TouchableOpacity
-                          style={{ padding: rs(10) }}
-                          className="border-b border-borderStrong-light"
-                          onPress={() => openEditModal(item)}
+                    {activeDropdown === item.id && (
+                      <>
+                        <Pressable
+                          style={
+                            {
+                              position: "absolute",
+                              top: -5000,
+                              left: -5000,
+                              width: 10000,
+                              height: 10000,
+                              zIndex: 90,
+                              cursor: "auto",
+                            } as any
+                          }
+                          onPress={() => setActiveDropdown(null)}
+                        />
+
+                        <View
+                          className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
+                          style={{
+                            minWidth: rs(100),
+                            zIndex: 100,
+                            elevation: 5,
+                            marginTop: rs(4),
+                          }}
                         >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="font-inter text-textPrimary-light"
+                          <TouchableOpacity
+                            style={{ padding: rs(10) }}
+                            className="border-b border-borderStrong-light"
+                            onPress={() => openEditModal(item)}
                           >
-                            Edit
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{ padding: rs(10) }}
-                          onPress={() => confirmDelete(item.id)}
-                        >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="font-inter text-red-600"
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="font-inter text-textPrimary-light"
+                            >
+                              Edit
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ padding: rs(10) }}
+                            onPress={() => confirmDelete(item.id)}
                           >
-                            Delete
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="font-inter text-red-600"
+                            >
+                              Delete
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))
-          )}
+              ))
+            )}
+          </ScrollView>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }

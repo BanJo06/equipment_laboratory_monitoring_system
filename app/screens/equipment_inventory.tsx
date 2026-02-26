@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import AddEquipmentModal from "../components/dialogs/AddEquipmentModal";
 import DeleteEquipmentModal from "../components/dialogs/DeleteEquipmentModal";
-import EquipmentDetailsModal from "../components/dialogs/EquipmentDetailsModal"; // New Import
+import EquipmentDetailsModal from "../components/dialogs/EquipmentDetailsModal";
 import StatusModal from "../components/dialogs/StatusModal";
 
 export default function EquipmentInventory() {
@@ -154,6 +154,7 @@ export default function EquipmentInventory() {
         onClose={() => setSuccessModalVisible(false)}
       />
 
+      {/* Title Header */}
       <View
         style={{
           marginBottom: rs(16),
@@ -204,167 +205,177 @@ export default function EquipmentInventory() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={{ flex: 1, overflow: "visible" }}
-        nestedScrollEnabled={true}
-        showsVerticalScrollIndicator={false}
+      {/* TABLE OUTER CONTAINER */}
+      <View
+        style={{ padding: rs(32), zIndex: 10 }}
+        className="bg-white rounded-lg border-[2px] border-borderStrong-light"
       >
+        {/* Fixed Table Header */}
         <View
-          style={{ padding: rs(32) }}
-          className="bg-white rounded-lg border-[2px] border-borderStrong-light"
+          style={{ paddingBottom: rs(8), marginBottom: rs(8), zIndex: 11 }}
+          className="flex-row border-b border-[#6684B0] items-center"
         >
-          <View
-            style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
-            className="flex-row border-b border-[#6684B0] items-center"
+          <Text
+            style={{ fontSize: rf(16), flex: 2 }}
+            className="font-inter-bold text-textPrimary-light"
           >
-            <Text
-              style={{ fontSize: rf(16), flex: 2 }}
-              className="font-inter-bold text-textPrimary-light"
-            >
-              Equipment Name
-            </Text>
-            <Text
-              style={{ fontSize: rf(16), flex: 0.5 }}
-              className="text-center font-inter-bold text-textPrimary-light"
-            >
-              Stock
-            </Text>
-            <View style={{ flex: 1.2 }} />
-          </View>
-
-          {isFetching && equipmentList.length === 0 ? (
-            <View style={{ padding: rs(32), alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#1d4ed8" />
-              <Text
-                style={{ marginTop: rs(16), fontSize: rf(14) }}
-                className="font-inter text-textSecondary-light"
-              >
-                Loading equipment...
-              </Text>
-            </View>
-          ) : equipmentList.length === 0 ? (
-            <Text
-              style={{ padding: rs(16), textAlign: "center", fontSize: rf(16) }}
-              className="font-inter text-[#6684B0]"
-            >
-              No equipment found. Add an item to get started.
-            </Text>
-          ) : (
-            equipmentList.map((item, idx) => (
-              <View
-                key={item.id || idx}
-                style={{
-                  paddingVertical: rs(12),
-                  zIndex: activeDropdown === item.id ? 10 : 1,
-                }}
-                className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
-              >
-                <Text
-                  style={{ fontSize: rf(16), flex: 2 }}
-                  className="font-inter text-textPrimary-light"
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <Text
-                  style={{ fontSize: rf(16), flex: 0.5 }}
-                  className="font-inter text-center text-textPrimary-light"
-                >
-                  {item.units}
-                </Text>
-
-                <View
-                  style={{
-                    flex: 1.2,
-                    alignItems: "flex-end",
-                    position: "relative",
-                  }}
-                >
-                  <TouchableOpacity
-                    style={{ padding: rs(4), marginRight: rs(8) }}
-                    onPress={() =>
-                      setActiveDropdown(
-                        activeDropdown === item.id ? null : item.id,
-                      )
-                    }
-                  >
-                    <Feather
-                      name="more-horizontal"
-                      size={rs(20)}
-                      color="#112747"
-                    />
-                  </TouchableOpacity>
-
-                  {activeDropdown === item.id && (
-                    <>
-                      <Pressable
-                        style={
-                          {
-                            position: "absolute",
-                            top: -5000,
-                            left: -5000,
-                            width: 10000,
-                            height: 10000,
-                            zIndex: 90,
-                            cursor: "auto",
-                          } as any
-                        }
-                        onPress={() => setActiveDropdown(null)}
-                      />
-
-                      <View
-                        className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
-                        style={{
-                          minWidth: rs(100),
-                          zIndex: 100,
-                          elevation: 5,
-                          marginTop: rs(4),
-                        }}
-                      >
-                        <TouchableOpacity
-                          style={{ padding: rs(10) }}
-                          className="border-b border-borderStrong-light"
-                          onPress={() => openDetailsModal(item)}
-                        >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="font-inter text-textPrimary-light"
-                          >
-                            Details
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{ padding: rs(10) }}
-                          className="border-b border-borderStrong-light"
-                          onPress={() => openEditModal(item)}
-                        >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="font-inter text-textPrimary-light"
-                          >
-                            Edit
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{ padding: rs(10) }}
-                          onPress={() => confirmDelete(item.id)}
-                        >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="font-inter text-red-600"
-                          >
-                            Delete
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
-                </View>
-              </View>
-            ))
-          )}
+            Equipment Name
+          </Text>
+          <Text
+            style={{ fontSize: rf(16), flex: 0.5 }}
+            className="text-center font-inter-bold text-textPrimary-light"
+          >
+            Stock
+          </Text>
+          <View style={{ flex: 1.2 }} />
         </View>
-      </ScrollView>
+
+        {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
+        <View style={{ height: rs(544), zIndex: 10 }}>
+          <ScrollView
+            style={{ flex: 1, overflow: "visible" }}
+            contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }} // Large padding so bottom dropdowns aren't clipped
+            nestedScrollEnabled={true}
+            showsVerticalScrollIndicator={true}
+          >
+            {isFetching && equipmentList.length === 0 ? (
+              <View style={{ padding: rs(32), alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#1d4ed8" />
+                <Text
+                  style={{ marginTop: rs(16), fontSize: rf(14) }}
+                  className="font-inter text-textSecondary-light"
+                >
+                  Loading equipment...
+                </Text>
+              </View>
+            ) : equipmentList.length === 0 ? (
+              <Text
+                style={{
+                  padding: rs(16),
+                  textAlign: "center",
+                  fontSize: rf(16),
+                }}
+                className="font-inter text-[#6684B0]"
+              >
+                No equipment found. Add an item to get started.
+              </Text>
+            ) : (
+              equipmentList.map((item, idx) => (
+                <View
+                  key={item.id || idx}
+                  style={{
+                    paddingVertical: rs(12),
+                    zIndex: activeDropdown === item.id ? 10 : 1,
+                  }}
+                  className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
+                >
+                  <Text
+                    style={{ fontSize: rf(16), flex: 2 }}
+                    className="font-inter text-textPrimary-light"
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(16), flex: 0.5 }}
+                    className="font-inter text-center text-textPrimary-light"
+                  >
+                    {item.units}
+                  </Text>
+
+                  <View
+                    style={{
+                      flex: 1.2,
+                      alignItems: "flex-end",
+                      position: "relative",
+                    }}
+                  >
+                    <TouchableOpacity
+                      style={{ padding: rs(4), marginRight: rs(8) }}
+                      onPress={() =>
+                        setActiveDropdown(
+                          activeDropdown === item.id ? null : item.id,
+                        )
+                      }
+                    >
+                      <Feather
+                        name="more-horizontal"
+                        size={rs(20)}
+                        color="#112747"
+                      />
+                    </TouchableOpacity>
+
+                    {activeDropdown === item.id && (
+                      <>
+                        <Pressable
+                          style={
+                            {
+                              position: "absolute",
+                              top: -5000,
+                              left: -5000,
+                              width: 10000,
+                              height: 10000,
+                              zIndex: 90,
+                              cursor: "auto",
+                            } as any
+                          }
+                          onPress={() => setActiveDropdown(null)}
+                        />
+
+                        <View
+                          className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
+                          style={{
+                            minWidth: rs(100),
+                            zIndex: 100,
+                            elevation: 5,
+                            marginTop: rs(4),
+                          }}
+                        >
+                          <TouchableOpacity
+                            style={{ padding: rs(10) }}
+                            className="border-b border-borderStrong-light"
+                            onPress={() => openDetailsModal(item)}
+                          >
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="font-inter text-textPrimary-light"
+                            >
+                              Details
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ padding: rs(10) }}
+                            className="border-b border-borderStrong-light"
+                            onPress={() => openEditModal(item)}
+                          >
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="font-inter text-textPrimary-light"
+                            >
+                              Edit
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ padding: rs(10) }}
+                            onPress={() => confirmDelete(item.id)}
+                          >
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="font-inter text-red-600"
+                            >
+                              Delete
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </View>
     </View>
   );
 }

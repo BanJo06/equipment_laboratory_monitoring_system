@@ -1,7 +1,7 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -48,6 +48,10 @@ export default function UsageHistory() {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // --- SORTING STATE ---
+  const [sortColumn, setSortColumn] = useState<keyof EquipmentLog | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // --- DATA FETCHING ---
   const fetchLogs = async () => {
@@ -131,6 +135,72 @@ export default function UsageHistory() {
     }
   };
 
+  // --- SORTING LOGIC ---
+  const handleSort = (column: keyof EquipmentLog) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedLogs = useMemo(() => {
+    if (!sortColumn) return logs;
+
+    return [...logs].sort((a, b) => {
+      let valA = a[sortColumn] || "";
+      let valB = b[sortColumn] || "";
+
+      // String comparison
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [logs, sortColumn, sortDirection]);
+
+  // Helper to render sortable headers
+  const renderSortHeader = (
+    label: string,
+    column: keyof EquipmentLog,
+    flex: number,
+    align: "left" | "center" | "right",
+    pr: number = 0,
+  ) => {
+    return (
+      <TouchableOpacity
+        onPress={() => handleSort(column)}
+        style={{
+          flex,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent:
+            align === "center"
+              ? "center"
+              : align === "right"
+                ? "flex-end"
+                : "flex-start",
+          paddingRight: pr,
+        }}
+      >
+        <Text
+          style={{ fontSize: rf(14) }}
+          className="font-inter-bold text-textPrimary-light"
+        >
+          {label}
+        </Text>
+        {sortColumn === column && (
+          <Feather
+            name={sortDirection === "asc" ? "arrow-up" : "arrow-down"}
+            size={rs(14)}
+            color="#1d4ed8"
+            style={{ marginLeft: rs(4) }}
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   // --- DELETE LOGIC ---
   const handleDeletePress = () => {
     if (selectedLogs.length === 0) {
@@ -178,7 +248,6 @@ export default function UsageHistory() {
       }}
       className="bg-white rounded-lg shadow-sm"
     >
-      {/* EXTRACTED MODALS */}
       <ErrorDeleteModal
         visible={isErrorModalVisible}
         onClose={() => setIsErrorModalVisible(false)}
@@ -258,6 +327,7 @@ export default function UsageHistory() {
         style={{ padding: rs(32), overflow: "hidden" }}
         className="bg-white rounded-lg border-[2px] border-borderStrong-light"
       >
+        {/* Table Header with Sorting */}
         <View
           style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
           className="flex-row border-b border-[#6684B0] items-center"
@@ -272,36 +342,13 @@ export default function UsageHistory() {
               color={allSelected ? "#1d4ed8" : "gray"}
             />
           </TouchableOpacity>
-          <Text
-            style={{ fontSize: rf(14), flex: 1.5 }}
-            className="font-inter-bold text-textPrimary-light"
-          >
-            User
-          </Text>
-          <Text
-            style={{ fontSize: rf(14), flex: 1.5 }}
-            className="text-center font-inter-bold text-textPrimary-light"
-          >
-            Equipment
-          </Text>
-          <Text
-            style={{ fontSize: rf(14), flex: 1.5 }}
-            className="text-center font-inter-bold text-textPrimary-light"
-          >
-            Time Used
-          </Text>
-          <Text
-            style={{ fontSize: rf(14), flex: 1.2 }}
-            className="text-center font-inter-bold text-textPrimary-light"
-          >
-            Duration
-          </Text>
-          <Text
-            style={{ fontSize: rf(14), flex: 1.2 }}
-            className="text-right font-inter-bold text-textPrimary-light pr-4"
-          >
-            Remarks
-          </Text>
+
+          {renderSortHeader("User", "full_name", 1.5, "left")}
+          {renderSortHeader("Equipment", "equipment_name", 1.5, "center")}
+          {/* Sorting by 'created_at' yields the most accurate chronological sort for 'Time Used' */}
+          {renderSortHeader("Time Used", "created_at", 1.5, "center")}
+          {renderSortHeader("Duration", "duration", 1.2, "center")}
+          {renderSortHeader("Remarks", "status", 1.2, "right", rs(16))}
         </View>
 
         <View style={{ height: rs(544), overflow: "hidden" }}>
@@ -317,12 +364,13 @@ export default function UsageHistory() {
                 color="#1d4ed8"
                 style={{ marginTop: 20 }}
               />
-            ) : logs.length === 0 ? (
+            ) : sortedLogs.length === 0 ? (
               <Text className="text-center text-gray-500 font-inter mt-4">
                 No usage history found.
               </Text>
             ) : (
-              logs.map((log, idx) => {
+              // MAP OVER sortedLogs INSTEAD OF logs
+              sortedLogs.map((log, idx) => {
                 const statusStyle = getStatusStyle(log.status);
                 const isSelected = selectedLogs.includes(log.id);
 
@@ -331,7 +379,9 @@ export default function UsageHistory() {
                     key={log.id}
                     style={{ paddingVertical: rs(12) }}
                     className={`flex-row items-center ${
-                      idx !== logs.length - 1 ? "border-b border-[#DADFE5]" : ""
+                      idx !== sortedLogs.length - 1
+                        ? "border-b border-[#DADFE5]"
+                        : ""
                     } ${isSelected ? "bg-blue-50" : ""}`}
                   >
                     <TouchableOpacity
