@@ -304,7 +304,7 @@ export default function UsageHistory() {
           </Text>
         </View>
 
-        <View style={{ height: rs(450), overflow: "hidden" }}>
+        <View style={{ height: rs(544), overflow: "hidden" }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: rs(16), flexGrow: 1 }}
