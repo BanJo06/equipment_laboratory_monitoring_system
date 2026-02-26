@@ -289,6 +289,24 @@ export default function UserDashboard() {
     }
   };
 
+  // --- STATS CALCULATIONS ---
+  // Calculates the total available units across all equipment
+  const totalAvailableStock = inventory.reduce(
+    (total, item) => total + item.units,
+    0,
+  );
+
+  // Formats the live clock to include the day of the week, date, and time
+  const liveDateTime = currentTime.toLocaleString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
   // --- RENDER ---
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -828,9 +846,9 @@ export default function UserDashboard() {
               >
                 {[
                   { label: "My Active", val: activeSessions.length.toString() },
-                  { label: "Date/Time", val: new Date().toLocaleDateString() },
-                  { label: "Available", val: "8" },
-                  { label: "Total", val: "8" },
+                  { label: "Date/Time", val: liveDateTime },
+                  { label: "Available", val: totalAvailableStock.toString() },
+                  { label: "Total Items", val: inventory.length.toString() },
                 ].map((stat, i) => (
                   <View
                     key={i}
@@ -839,7 +857,7 @@ export default function UserDashboard() {
                       minHeight: rs(120),
                       width: isMobile ? "47.5%" : "48%",
                     }}
-                    className="bg-white rounded-2xl shadow-sm"
+                    className="bg-white rounded-2xl shadow-sm justify-center"
                   >
                     <Text
                       style={{ fontSize: rf(20) }}
