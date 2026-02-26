@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -7,6 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../lib/supabase"; // Make sure the path is correct
 import Accounts from "./screens/accounts";
 import EquipmentInventory from "./screens/equipment_inventory";
 import Home from "./screens/home";
@@ -18,6 +20,10 @@ export default function AdminDashboard() {
   // --- STATE FOR NAVIGATION ---
   const [activeTab, setActiveTab] = useState("Home");
 
+  // --- STATE FOR INVENTORY ---
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(true);
+
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
   const isSmallPhone = width < 600;
@@ -26,8 +32,28 @@ export default function AdminDashboard() {
   const mobileScale = Math.min(width / 430, 1);
   const scale = isMobile ? mobileScale : desktopScale;
 
-  const rf = (size) => size * scale;
-  const rs = (size) => size * scale;
+  const rf = (size: number) => size * scale;
+  const rs = (size: number) => size * scale;
+
+  // --- DATA FETCHING ---
+  const fetchInventory = async () => {
+    setLoadingInventory(true);
+    const { data, error } = await supabase
+      .from("equipment_inventory")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (!error && data) {
+      setInventory(data);
+    } else if (error) {
+      console.error("Error fetching inventory:", error);
+    }
+    setLoadingInventory(false);
+  };
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -168,6 +194,8 @@ export default function AdminDashboard() {
                 >
                   Available Equipments
                 </Text>
+
+                {/* Header (Fixed at the top) */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -188,38 +216,66 @@ export default function AdminDashboard() {
                     style={{ fontSize: rf(14), flex: 1.2 }}
                     className="text-right font-inter-bold text-textPrimary-light"
                   >
-                    Last Used
+                    Status
                   </Text>
                 </View>
-                {["Microscope A", "PCR Machine", "Incubator"].map(
-                  (item, idx) => (
-                    <View
-                      key={idx}
-                      style={{ paddingVertical: rs(8) }}
-                      className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
-                    >
-                      <Text
-                        style={{ fontSize: rf(14), flex: 2 }}
-                        className="font-inter text-textPrimary-light"
-                        numberOfLines={1}
-                      >
-                        {item}
+
+                {/* STRICT SCROLLABLE CONTAINER */}
+                <View style={{ height: rs(139), overflow: "hidden" }}>
+                  <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{
+                      paddingBottom: rs(16),
+                      flexGrow: 1,
+                    }}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {/* Dynamic Rows */}
+                    {loadingInventory ? (
+                      <ActivityIndicator
+                        size="small"
+                        color="#1d4ed8"
+                        style={{ marginTop: 20 }}
+                      />
+                    ) : inventory.length === 0 ? (
+                      <Text className="text-center text-gray-500 font-inter mt-4">
+                        No equipment found.
                       </Text>
-                      <Text
-                        style={{ fontSize: rf(14), flex: 0.5 }}
-                        className="font-inter text-center text-textPrimary-light"
-                      >
-                        {idx + 1}
-                      </Text>
-                      <Text
-                        style={{ fontSize: rf(14), flex: 1.2 }}
-                        className="font-inter text-right text-textPrimary-light"
-                      >
-                        Jan {idx + 2}
-                      </Text>
-                    </View>
-                  ),
-                )}
+                    ) : (
+                      inventory.map((item) => (
+                        <View
+                          key={item.id}
+                          style={{ paddingVertical: rs(8) }}
+                          className="flex-row items-center border-b border-[#DADFE5]"
+                        >
+                          <Text
+                            style={{ fontSize: rf(14), flex: 2 }}
+                            className="font-inter text-textPrimary-light pr-2"
+                            numberOfLines={2}
+                          >
+                            {item.name}{" "}
+                            {item.model_name ? `- ${item.model_name}` : ""}
+                          </Text>
+                          <Text
+                            style={{ fontSize: rf(14), flex: 0.5 }}
+                            className="font-inter text-center text-textPrimary-light"
+                          >
+                            {item.units}
+                          </Text>
+                          <Text
+                            style={{ fontSize: rf(14), flex: 1.2 }}
+                            className={`font-inter-bold text-right ${
+                              item.units > 0 ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {item.units > 0 ? "Available" : "In Use"}
+                          </Text>
+                        </View>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
               </View>
             </View>
 
