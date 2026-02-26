@@ -11,7 +11,10 @@ CREATE TABLE public.equipment_logs (
 );
 
 -- Enable Row Level Security (RLS)
+ALTER TABLE public.equipment_logs ADD COLUMN status TEXT DEFAULT 'active';
 ALTER TABLE public.equipment_logs ENABLE ROW LEVEL SECURITY;
+
+
 
 -- Create policies for public access
 CREATE POLICY "Allow public read access" ON public.equipment_logs 

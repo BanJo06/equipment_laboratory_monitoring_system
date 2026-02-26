@@ -38,6 +38,7 @@ export default function UserDashboard() {
     id: string;
     name: string;
     units: number;
+    model_name: string;
   } | null>(null);
 
   // Time and session states
@@ -51,6 +52,9 @@ export default function UserDashboard() {
   // Active sessions state
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
+
+  // NEW: Inventory state for the Available Equipments table
+  const [inventory, setInventory] = useState<any[]>([]);
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
@@ -100,7 +104,7 @@ export default function UserDashboard() {
       .from("equipment_logs")
       .select("*")
       .eq("full_name", fullNameStr)
-      .is("time_out", null)
+      .eq("status", "In Use") // CHANGED: Now filters by active status
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -110,7 +114,19 @@ export default function UserDashboard() {
     }
   };
 
+  const fetchInventory = async () => {
+    const { data, error } = await supabase
+      .from("equipment_inventory")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (!error && data) {
+      setInventory(data);
+    }
+  };
+
   useEffect(() => {
+    fetchInventory();
     if (fullNameStr) {
       fetchActiveSessions();
     }
@@ -165,6 +181,7 @@ export default function UserDashboard() {
           equipment_name: selectedEquipment.name,
           date: currentDate,
           time_in: timeIn,
+          status: "In Use",
         },
       ]);
 
@@ -188,34 +205,30 @@ export default function UserDashboard() {
     setTimeMode("now");
     setIsStartingSession(false);
     fetchActiveSessions();
+    fetchInventory();
   };
 
   const handleStopSession = async (session: any) => {
     setIsStoppingSession(true);
 
-    // 1. Get current time for the time_out stamp
     const timeOut = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
-
-    // 2. Calculate final duration based on the database created_at timestamp
     const start = new Date(session.created_at).getTime();
     const current = new Date().getTime();
     const diff = Math.max(0, current - start);
-
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    // Format to match "1H 13M"
     const finalDuration = `${hours}H ${minutes}M`;
 
-    // 3. Update log out time AND duration in the database
+    // Update log out time AND status to completed
     const { error } = await supabase
       .from("equipment_logs")
       .update({
         time_out: timeOut,
-        duration: finalDuration, // Saves the formatted string
+        duration: finalDuration,
+        status: "completed", // NEW
       })
       .eq("id", session.id);
 
@@ -226,24 +239,54 @@ export default function UserDashboard() {
       return;
     }
 
-    // 4. Fetch current inventory stock to increment correctly
+    await returnEquipmentStock(session.equipment_name);
+    alert("Session stopped successfully!");
+    fetchActiveSessions();
+    fetchInventory();
+    setIsStoppingSession(false);
+  };
+
+  const handleCancelSession = async (session: any) => {
+    setIsStoppingSession(true);
+
+    // Update status to cancelled, do not record time_out or duration
+    const { error } = await supabase
+      .from("equipment_logs")
+      .update({
+        status: "cancelled", // NEW
+      })
+      .eq("id", session.id);
+
+    if (error) {
+      console.error("Error cancelling session:", error);
+      alert("Failed to cancel session.");
+      setIsStoppingSession(false);
+      return;
+    }
+
+    await returnEquipmentStock(session.equipment_name);
+    alert("Session cancelled.");
+    fetchActiveSessions();
+    fetchInventory();
+    setIsStoppingSession(false);
+  };
+
+  const returnEquipmentStock = async (fullEquipmentName: string) => {
+    // Extract base name if it has a model attached (e.g., "Microscope - X200" -> "Microscope")
+    const baseName = fullEquipmentName.split(" - ")[0];
+
     const { data: eqData } = await supabase
       .from("equipment_inventory")
       .select("units")
-      .eq("name", session.equipment_name)
+      .eq("name", baseName)
       .single();
 
     if (eqData) {
-      // Increase stock by 1
       await supabase
         .from("equipment_inventory")
         .update({ units: eqData.units + 1 })
-        .eq("name", session.equipment_name);
+        .eq("name", baseName);
     }
-
-    alert("Session stopped successfully!");
-    fetchActiveSessions();
-    setIsStoppingSession(false);
   };
 
   // --- RENDER ---
@@ -514,7 +557,7 @@ export default function UserDashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Available Equipments Table (Static placeholder) */}
+              {/* 3. Dynamic Available Equipments Table */}
               <View
                 style={{ padding: rs(32), marginBottom: rs(24) }}
                 className="bg-white rounded-lg shadow-sm"
@@ -525,6 +568,8 @@ export default function UserDashboard() {
                 >
                   Available Equipments
                 </Text>
+
+                {/* Header */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -541,42 +586,45 @@ export default function UserDashboard() {
                   >
                     Qty
                   </Text>
+                  {/* CHANGED "Last Used" to "Status" */}
                   <Text
                     style={{ fontSize: rf(14), flex: 1.2 }}
                     className="text-right font-inter-bold text-textPrimary-light"
                   >
-                    Last Used
+                    Status
                   </Text>
                 </View>
-                {["Microscope A", "PCR Machine", "Incubator"].map(
-                  (item, idx) => (
-                    <View
-                      key={idx}
-                      style={{ paddingVertical: rs(8) }}
-                      className={`flex-row items-center ${idx !== 2 ? "border-b border-[#DADFE5]" : ""}`}
+
+                {/* Dynamic Rows */}
+                {inventory.map((item) => (
+                  <View
+                    key={item.id}
+                    style={{ paddingVertical: rs(8) }}
+                    className="flex-row items-center border-b border-[#DADFE5]"
+                  >
+                    <Text
+                      style={{ fontSize: rf(14), flex: 2 }}
+                      className="font-inter text-textPrimary-light"
+                      numberOfLines={1}
                     >
-                      <Text
-                        style={{ fontSize: rf(14), flex: 2 }}
-                        className="font-inter text-textPrimary-light"
-                        numberOfLines={1}
-                      >
-                        {item}
-                      </Text>
-                      <Text
-                        style={{ fontSize: rf(14), flex: 0.5 }}
-                        className="font-inter text-center text-textPrimary-light"
-                      >
-                        {idx + 1}
-                      </Text>
-                      <Text
-                        style={{ fontSize: rf(14), flex: 1.2 }}
-                        className="font-inter text-right text-textPrimary-light"
-                      >
-                        Jan {idx + 2}
-                      </Text>
-                    </View>
-                  ),
-                )}
+                      {item.name} - {item.model_name}
+                    </Text>
+                    <Text
+                      style={{ fontSize: rf(14), flex: 0.5 }}
+                      className="font-inter text-center text-textPrimary-light"
+                    >
+                      {item.units}
+                    </Text>
+
+                    {/* NEW: Dynamic "In Use" condition */}
+                    <Text
+                      style={{ fontSize: rf(14), flex: 1.2 }}
+                      className={`font-inter-bold text-right ${item.units > 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {item.units > 0 ? "Available" : "In Use"}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
 
@@ -725,7 +773,7 @@ export default function UserDashboard() {
                         <View
                           style={{
                             flexDirection: width < 500 ? "column" : "row",
-                            gap: rs(8),
+                            gap: rs(16),
                           }}
                         >
                           <TouchableOpacity
@@ -735,7 +783,7 @@ export default function UserDashboard() {
                               flex: 1,
                             }}
                             className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-red-400" : "bg-red-600"}`}
-                            onPress={() => handleStopSession(session)}
+                            onPress={() => handleStopSession(session)} // Stop Button
                             disabled={isStoppingSession}
                           >
                             <Text
@@ -745,6 +793,25 @@ export default function UserDashboard() {
                               {isStoppingSession
                                 ? "Stopping..."
                                 : "Stop Using Equipment"}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{
+                              paddingHorizontal: rs(24),
+                              paddingVertical: rs(12),
+                              flex: 1,
+                            }}
+                            className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-gray-400" : "bg-gray-600"}`} // Changed color to differentiate
+                            onPress={() => handleCancelSession(session)} // Cancel Button
+                            disabled={isStoppingSession}
+                          >
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="text-white font-inter-bold"
+                            >
+                              {isStoppingSession
+                                ? "Processing..."
+                                : "Cancel Equipment"}
                             </Text>
                           </TouchableOpacity>
                         </View>
