@@ -179,6 +179,7 @@ export default function UserDashboard() {
         {
           full_name: fullNameStr,
           equipment_name: selectedEquipment.name,
+          model_name: selectedEquipment.model_name,
           date: currentDate,
           time_in: timeIn,
           status: "In Use",
@@ -271,21 +272,19 @@ export default function UserDashboard() {
     setIsStoppingSession(false);
   };
 
-  const returnEquipmentStock = async (fullEquipmentName: string) => {
-    // Extract base name if it has a model attached (e.g., "Microscope - X200" -> "Microscope")
-    const baseName = fullEquipmentName.split(" - ")[0];
-
+  const returnEquipmentStock = async (equipmentName: string) => {
+    // We no longer need to split the string!
     const { data: eqData } = await supabase
       .from("equipment_inventory")
       .select("units")
-      .eq("name", baseName)
+      .eq("name", equipmentName)
       .single();
 
     if (eqData) {
       await supabase
         .from("equipment_inventory")
         .update({ units: eqData.units + 1 })
-        .eq("name", baseName);
+        .eq("name", equipmentName);
     }
   };
 
@@ -729,7 +728,7 @@ export default function UserDashboard() {
                               style={{ fontSize: rf(16) }}
                               className="font-inter text-textPrimary-light ml-2 font-bold"
                             >
-                              {session.equipment_name}
+                              {session.equipment_name} - {session.model_name}
                             </Text>
                           </View>
                           <TouchableOpacity

@@ -12,6 +12,7 @@ CREATE TABLE public.equipment_logs (
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.equipment_logs ADD COLUMN status TEXT DEFAULT 'active';
+ALTER TABLE public.equipment_logs ADD COLUMN model_name TEXT;
 ALTER TABLE public.equipment_logs ENABLE ROW LEVEL SECURITY;
 
 
