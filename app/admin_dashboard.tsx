@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "../lib/supabase"; // Make sure the path is correct
+import { supabase } from "../lib/supabase";
 import Accounts from "./screens/accounts";
 import EquipmentInventory from "./screens/equipment_inventory";
 import Home from "./screens/home";
@@ -20,9 +20,12 @@ export default function AdminDashboard() {
   // --- STATE FOR NAVIGATION ---
   const [activeTab, setActiveTab] = useState("Home");
 
-  // --- STATE FOR INVENTORY ---
+  // --- STATE FOR INVENTORY & ONLINE USERS ---
   const [inventory, setInventory] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
+
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+  const [loadingOnline, setLoadingOnline] = useState(true);
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
@@ -51,8 +54,52 @@ export default function AdminDashboard() {
     setLoadingInventory(false);
   };
 
+  const fetchOnlineUsers = async () => {
+    setLoadingOnline(true);
+    const { data, error } = await supabase
+      .from("accounts")
+      .select("first_name, last_name, role")
+      .eq("isOnline", true)
+      .neq("role", "admin"); // Database-level exclusion
+
+    if (!error && data) {
+      // Client-side fallback exclusion (catches "Admin" or "ADMIN" just in case of casing differences)
+      const filteredUsers = data.filter(
+        (user) => user.role?.toLowerCase() !== "admin",
+      );
+      setOnlineUsers(filteredUsers);
+    } else if (error) {
+      console.error("Error fetching online users:", error);
+    }
+    setLoadingOnline(false);
+  };
+
+  // --- INITIAL FETCH & REALTIME SUBSCRIPTION ---
   useEffect(() => {
     fetchInventory();
+    fetchOnlineUsers();
+
+    // Set up Realtime subscription for live online status updates
+    const accountsSubscription = supabase
+      .channel("accounts-online-status")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "accounts",
+        },
+        () => {
+          // Re-fetch online users whenever any account is updated
+          fetchOnlineUsers();
+        },
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(accountsSubscription);
+    };
   }, []);
 
   return (
@@ -153,33 +200,64 @@ export default function AdminDashboard() {
                   style={{ flex: 1, padding: rs(32) }}
                   className="bg-white rounded-lg shadow-sm"
                 >
-                  <View className="mb-6">
+                  <View className="mb-6 flex-row justify-between items-center">
                     <Text
                       style={{ fontSize: isSmallPhone ? rf(18) : 18 }}
                       className="text-textPrimary-light font-inter-bold"
                     >
                       Online
                     </Text>
+                    <View className="bg-green-100 px-2 py-1 rounded-full">
+                      <Text className="text-green-700 font-inter-bold text-xs">
+                        {onlineUsers.length} Active
+                      </Text>
+                    </View>
                   </View>
-                  <View className="gap-4">
-                    {[
-                      { n: "Juan Dela Cruz", r: "Researcher II" },
-                      { n: "Carl Lozano", r: "Researcher III" },
-                      { n: "Dave Yokingco", r: "Researcher III" },
-                    ].map((p, i) => (
-                      <View key={i} className="flex-row gap-4">
-                        <View className="bg-blue-600 w-[48px] h-[48px] rounded-full" />
-                        <View className="flex-col gap-1">
-                          <Text className="font-inter-bold text-[16px] text-textPrimary-light">
-                            {p.n}
-                          </Text>
-                          <Text className="font-inter text-[14px] text-textSecondary-light">
-                            {p.r}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
+
+                  {/* DYNAMIC SCROLLABLE USER LIST */}
+                  <ScrollView
+                    style={{ maxHeight: rs(250) }}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <View className="gap-4">
+                      {loadingOnline ? (
+                        <ActivityIndicator
+                          color="#1d4ed8"
+                          style={{ marginTop: 20 }}
+                        />
+                      ) : onlineUsers.length === 0 ? (
+                        <Text className="text-gray-500 font-inter text-center mt-4">
+                          No users online.
+                        </Text>
+                      ) : (
+                        onlineUsers.map((user, i) => (
+                          <View key={i} className="flex-row gap-4 items-center">
+                            <View className="relative">
+                              <View className="bg-blue-600 w-[48px] h-[48px] rounded-full items-center justify-center">
+                                <Text className="text-white font-inter-bold text-[18px]">
+                                  {user.first_name?.charAt(0)}
+                                  {user.last_name?.charAt(0)}
+                                </Text>
+                              </View>
+                              <View className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                            </View>
+
+                            <View className="flex-col gap-1 flex-1">
+                              <Text
+                                className="font-inter-bold text-[16px] text-textPrimary-light"
+                                numberOfLines={1}
+                              >
+                                {user.first_name} {user.last_name}
+                              </Text>
+                              <Text className="font-inter text-[14px] text-textSecondary-light capitalize">
+                                {user.role || "User"}
+                              </Text>
+                            </View>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  </ScrollView>
                 </View>
               </View>
 
@@ -195,7 +273,6 @@ export default function AdminDashboard() {
                   Available Equipments
                 </Text>
 
-                {/* Header (Fixed at the top) */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -220,7 +297,6 @@ export default function AdminDashboard() {
                   </Text>
                 </View>
 
-                {/* STRICT SCROLLABLE CONTAINER */}
                 <View style={{ height: rs(139), overflow: "hidden" }}>
                   <ScrollView
                     style={{ flex: 1 }}
@@ -231,7 +307,6 @@ export default function AdminDashboard() {
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={true}
                   >
-                    {/* Dynamic Rows */}
                     {loadingInventory ? (
                       <ActivityIndicator
                         size="small"
@@ -285,7 +360,6 @@ export default function AdminDashboard() {
             {activeTab === "Usage History" && <UsageHistory />}
             {activeTab === "Equipment Inventory" && <EquipmentInventory />}
 
-            {/* Fallback view for unbuilt pages */}
             {activeTab == "Analytics" && (
               <View
                 style={{
