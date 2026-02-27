@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import DeleteLogsModal from "../components/dialogs/DeleteLogsModal";
 import ErrorDeleteModal from "../components/dialogs/ErrorDeleteModal";
+import UsageHistoryHelpModal from "../components/dialogs/UsageHistoryHelpModal";
 
 interface EquipmentLog {
   id: string;
@@ -48,6 +49,7 @@ export default function UsageHistory() {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // --- SORTING STATE ---
   const [sortColumn, setSortColumn] = useState<keyof EquipmentLog | null>(null);
@@ -261,6 +263,11 @@ export default function UsageHistory() {
         itemCount={selectedLogs.length}
       />
 
+      <UsageHistoryHelpModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -293,7 +300,9 @@ export default function UsageHistory() {
             </Text>
           </View>
         </View>
-        <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        <TouchableOpacity onPress={() => setHelpModalVisible(true)}>
+          <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        </TouchableOpacity>
       </View>
 
       <View className="flex-row justify-end mb-4 gap-2">

@@ -15,12 +15,14 @@ import {
 import AddEquipmentModal from "../components/dialogs/AddEquipmentModal";
 import DeleteEquipmentModal from "../components/dialogs/DeleteEquipmentModal";
 import EquipmentDetailsModal from "../components/dialogs/EquipmentDetailsModal";
+import EquipmentInventoryHelpModal from "../components/dialogs/EquipmentInventoryHelpModal";
 import StatusModal from "../components/dialogs/StatusModal";
 
 export default function EquipmentInventory() {
   const { width } = useWindowDimensions();
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
 
@@ -154,6 +156,11 @@ export default function EquipmentInventory() {
         onClose={() => setSuccessModalVisible(false)}
       />
 
+      <EquipmentInventoryHelpModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
+
       {/* Title Header */}
       <View
         style={{
@@ -187,7 +194,9 @@ export default function EquipmentInventory() {
             </Text>
           </View>
         </View>
-        <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        <TouchableOpacity onPress={() => setHelpModalVisible(true)}>
+          <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        </TouchableOpacity>
       </View>
 
       <View className="flex-row justify-start mb-4">

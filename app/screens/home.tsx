@@ -6,9 +6,11 @@ import {
   ActivityIndicator,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
+import HomeHelpModal from "../components/dialogs/HomeHelpModal";
 
 interface GroupedSession {
   full_name: string;
@@ -29,6 +31,7 @@ export default function Home() {
   const rs = (size: number) => size * scale;
 
   // --- STATE ---
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
   const [groupedSessions, setGroupedSessions] = useState<GroupedSession[]>([]);
   const [totalActiveEquipments, setTotalActiveEquipments] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -138,6 +141,10 @@ export default function Home() {
       }}
       className="bg-white rounded-lg shadow-sm"
     >
+      <HomeHelpModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
       {/* HEADER */}
       <View
         style={{
@@ -172,7 +179,9 @@ export default function Home() {
             </Text>
           </View>
         </View>
-        <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        <TouchableOpacity onPress={() => setHelpModalVisible(true)}>
+          <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        </TouchableOpacity>
       </View>
 
       {/* DYNAMIC SCROLLABLE CONTAINER */}

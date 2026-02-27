@@ -14,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import AccountsHelpModal from "../components/dialogs/AccountsHelpModal";
 import AddAccountModal from "../components/dialogs/AddAccountModal";
 import DeleteConfirmationModal from "../components/dialogs/DeleteConfirmationModal";
 import StatusModal from "../components/dialogs/StatusModal";
@@ -24,6 +25,7 @@ export default function Accounts() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [accountsList, setAccountsList] = useState<any[]>([]);
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   const [accountToEdit, setAccountToEdit] = useState<any>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -158,6 +160,11 @@ export default function Accounts() {
         onClose={() => setSuccessModalVisible(false)}
       />
 
+      <AccountsHelpModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -190,7 +197,9 @@ export default function Accounts() {
             </Text>
           </View>
         </View>
-        <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        <TouchableOpacity onPress={() => setHelpModalVisible(true)}>
+          <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+        </TouchableOpacity>
       </View>
 
       <View className="flex-row justify-between mb-4">
