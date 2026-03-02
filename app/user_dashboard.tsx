@@ -5,7 +5,7 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ScrollView,
@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
+import QRCodeModal from "./components/dialogs/QRCodeModal";
 
 export default function UserDashboard() {
   const { width } = useWindowDimensions();
@@ -31,6 +32,13 @@ export default function UserDashboard() {
   // Modal state management
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrSessionData, setQrSessionData] = useState<{
+    id: string;
+    equipment_name: string;
+    model_name: string | null;
+    location: string;
+  } | null>(null);
 
   // Equipment selection states
   const [isEquipmentModalVisible, setEquipmentModalVisible] = useState(false);
@@ -309,6 +317,7 @@ export default function UserDashboard() {
   // --- RENDER ---
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <Stack.Screen options={{ headerShown: false }} />
       <LogoutConfirmationModal
         visible={isLogoutModalVisible}
         onClose={() => setLogoutModalVisible(false)}
@@ -320,6 +329,12 @@ export default function UserDashboard() {
         visible={isEquipmentModalVisible}
         onClose={() => setEquipmentModalVisible(false)}
         onSelect={(equipment) => setSelectedEquipment(equipment)}
+      />
+
+      <QRCodeModal
+        visible={qrModalVisible}
+        onClose={() => setQrModalVisible(false)}
+        sessionData={qrSessionData}
       />
 
       <View className="flex-1 bg-bgPrimary-light">
@@ -737,6 +752,15 @@ export default function UserDashboard() {
                               paddingHorizontal: rs(12),
                             }}
                             className="border border-blue-700 rounded-lg flex-row items-center"
+                            onPress={() => {
+                              setQrSessionData({
+                                id: session.id,
+                                equipment_name: session.equipment_name,
+                                model_name: session.model_name,
+                                location: session.location,
+                              });
+                              setQrModalVisible(true);
+                            }}
                           >
                             <Ionicons
                               name="qr-code-outline"

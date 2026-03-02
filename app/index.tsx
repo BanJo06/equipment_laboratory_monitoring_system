@@ -1,12 +1,15 @@
+import { SVG_ICONS } from "@/assets/constants/icons";
 import {
   Inter_400Regular,
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { CameraView, useCameraPermissions } from "expo-camera"; // NEW IMPORT
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import {
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -15,7 +18,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SVG_ICONS } from "../assets/constants/icons";
 import { supabase } from "../lib/supabase";
 import StatusModal from "./components/dialogs/StatusModal";
 
@@ -41,6 +43,11 @@ export default function Index() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // --- QR SCANNER STATE ---
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isScanning, setIsScanning] = useState(false);
+  const [isProcessingQR, setIsProcessingQR] = useState(false);
+
   // Modal State Management
   const [modalConfig, setModalConfig] = useState({
     visible: false,
@@ -56,6 +63,97 @@ export default function Index() {
     }
   }, [loaded, error]);
 
+  // --- QR LOGOUT PROCESS ---
+  const openScanner = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        setModalConfig({
+          visible: true,
+          title: "Permission Denied",
+          message: "Camera permission is required to scan QR codes.",
+        });
+        return;
+      }
+    }
+    setIsScanning(true);
+  };
+
+  const handleQRScanned = async ({ data }: { data: string }) => {
+    if (isProcessingQR) return; // Prevent duplicate scans
+    setIsProcessingQR(true);
+    setIsScanning(false); // Close camera
+
+    try {
+      // 1. Fetch the session based on the scanned QR (which contains the log ID)
+      const { data: logData, error: logError } = await supabase
+        .from("equipment_logs")
+        .select("*")
+        .eq("id", data)
+        .single();
+
+      if (logError || !logData) {
+        throw new Error("Invalid QR Code or Session not found.");
+      }
+
+      if (logData.status !== "In Use") {
+        throw new Error("This session is already completed or cancelled.");
+      }
+
+      // 2. Calculate Final Duration
+      const start = new Date(logData.created_at).getTime();
+      const current = new Date().getTime();
+      const diff = Math.max(0, current - start);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const finalDuration = `${hours}H ${minutes}M`;
+      const timeOut = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // 3. Update Log Status
+      const { error: updateError } = await supabase
+        .from("equipment_logs")
+        .update({
+          time_out: timeOut,
+          duration: finalDuration,
+          status: "completed",
+        })
+        .eq("id", data);
+
+      if (updateError) throw updateError;
+
+      // 4. Return Stock to Inventory
+      const { data: eqData } = await supabase
+        .from("equipment_inventory")
+        .select("units")
+        .eq("name", logData.equipment_name)
+        .single();
+
+      if (eqData) {
+        await supabase
+          .from("equipment_inventory")
+          .update({ units: eqData.units + 1 })
+          .eq("name", logData.equipment_name);
+      }
+
+      setModalConfig({
+        visible: true,
+        title: "Logout Success",
+        message: `Successfully logged out equipment: ${logData.equipment_name}`,
+      });
+    } catch (err: any) {
+      setModalConfig({
+        visible: true,
+        title: "Scan Error",
+        message: err.message || "An error occurred during logout.",
+      });
+    } finally {
+      setIsProcessingQR(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!username || !password) {
       setModalConfig({
@@ -68,7 +166,6 @@ export default function Index() {
 
     setLoading(true);
 
-    // Fetch account details
     const { data, error: fetchError } = await supabase
       .from("accounts")
       .select("*")
@@ -87,7 +184,6 @@ export default function Index() {
       return;
     }
 
-    // Check online status
     if (data.isOnline) {
       setLoading(false);
       setModalConfig({
@@ -98,7 +194,6 @@ export default function Index() {
       return;
     }
 
-    // Update status to online
     const { error: updateError } = await supabase
       .from("accounts")
       .update({ isOnline: true })
@@ -115,7 +210,6 @@ export default function Index() {
       return;
     }
 
-    // Navigate with parameters
     router.push({
       pathname: "/user_dashboard",
       params: {
@@ -131,6 +225,45 @@ export default function Index() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* SCANNER MODAL OVERLAY */}
+      <Modal visible={isScanning} animationType="slide" transparent={false}>
+        <View style={{ flex: 1, backgroundColor: "black" }}>
+          <CameraView
+            style={{ flex: 1 }}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={handleQRScanned}
+          >
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "flex-end",
+                alignItems: "center",
+                paddingBottom: 50,
+              }}
+            >
+              <View className="bg-black/60 p-4 rounded-xl mb-6 items-center">
+                <Text className="text-white font-inter-bold text-lg">
+                  Align QR Code within the camera
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={{ paddingVertical: 16, paddingHorizontal: 40 }}
+                className="bg-red-600 rounded-full"
+                onPress={() => setIsScanning(false)}
+              >
+                <Text
+                  style={{ fontSize: 18 }}
+                  className="font-inter-bold text-white"
+                >
+                  Cancel Scan
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
 
       <StatusModal
         visible={modalConfig.visible}
@@ -254,6 +387,7 @@ export default function Index() {
               </TouchableOpacity>
             </View>
 
+            {/* CHANGED: Hooked up to openScanner */}
             <TouchableOpacity
               style={{
                 height: 56,
@@ -261,12 +395,16 @@ export default function Index() {
                 marginBottom: 40,
               }}
               className="w-full rounded-md bg-gray-600 justify-center items-center"
+              onPress={openScanner}
+              disabled={isProcessingQR}
             >
               <Text
                 style={{ fontSize: rf(16) }}
                 className="font-inter-bold text-white text-center px-4"
               >
-                Log Out using QR Code
+                {isProcessingQR
+                  ? "Processing Logout..."
+                  : "Log Out using QR Code"}
               </Text>
             </TouchableOpacity>
           </View>
