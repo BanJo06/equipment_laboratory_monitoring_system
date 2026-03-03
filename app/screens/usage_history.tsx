@@ -10,6 +10,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import DatePickerModal from "../components/dialogs/DatePickerModal";
 import DeleteLogsModal from "../components/dialogs/DeleteLogsModal";
 import ErrorDeleteModal from "../components/dialogs/ErrorDeleteModal";
 import UsageHistoryHelpModal from "../components/dialogs/UsageHistoryHelpModal";
@@ -44,6 +45,10 @@ export default function UsageHistory() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // --- DATE PICKER STATE ---
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+
   // --- SELECTION & MODAL STATE ---
   const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -58,10 +63,23 @@ export default function UsageHistory() {
   // --- DATA FETCHING ---
   const fetchLogs = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    setLogs([]); // Wipes old data to prevent crashes
+
+    let query = supabase
       .from("equipment_logs")
       .select("*")
       .order("created_at", { ascending: false });
+
+    if (selectedDate) {
+      // Format to YYYY-MM-DD safely avoiding timezone shifts
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+      const day = String(selectedDate.getDate()).padStart(2, "0");
+      const formattedDate = `${year}-${month}-${day}`;
+      query = query.eq("date", formattedDate);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setLogs(data);
@@ -74,7 +92,7 @@ export default function UsageHistory() {
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [selectedDate]);
 
   // --- LIVE CLOCK FOR "IN USE" DURATIONS ---
   useEffect(() => {
@@ -268,6 +286,13 @@ export default function UsageHistory() {
         onClose={() => setHelpModalVisible(false)}
       />
 
+      <DatePickerModal
+        visible={isDatePickerVisible}
+        onClose={() => setIsDatePickerVisible(false)}
+        initialDate={selectedDate}
+        onSelect={(date) => setSelectedDate(date)}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -306,15 +331,31 @@ export default function UsageHistory() {
       </View>
 
       <View className="flex-row justify-end mb-4 gap-2">
+        {selectedDate && (
+          <TouchableOpacity
+            style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+            className="bg-gray-500 rounded-md"
+            onPress={() => setSelectedDate(null)}
+          >
+            <Text
+              style={{ fontSize: rf(16) }}
+              className="text-white font-inter-bold"
+            >
+              Clear Filter
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
           className="bg-mainColor-light rounded-md"
+          onPress={() => setIsDatePickerVisible(true)}
         >
           <Text
             style={{ fontSize: rf(16) }}
             className="text-white font-inter-bold"
           >
-            Date Picker
+            {selectedDate ? selectedDate.toLocaleDateString() : "Select Date"}
           </Text>
         </TouchableOpacity>
 
