@@ -361,7 +361,7 @@ export default function Index() {
             <View style={{ gap: 16 }}>
               <TouchableOpacity
                 style={{ height: 56, opacity: loading ? 0.7 : 1 }}
-                className="w-full rounded-md bg-blue-600 justify-center items-center"
+                className="w-full rounded-md bg-mainColor-light justify-center items-center"
                 onPress={handleLogin}
                 disabled={loading}
               >
@@ -375,7 +375,7 @@ export default function Index() {
 
               <TouchableOpacity
                 style={{ height: 56 }}
-                className="w-full rounded-md bg-gray-800 justify-center items-center"
+                className="w-full rounded-md bg-mainColor-light justify-center items-center"
                 onPress={() => router.push("/admin_dashboard")}
               >
                 <Text
@@ -394,7 +394,7 @@ export default function Index() {
                 marginTop: 40,
                 marginBottom: 40,
               }}
-              className="w-full rounded-md bg-gray-600 justify-center items-center"
+              className="w-full rounded-md bg-mainColor-light justify-center items-center"
               onPress={openScanner}
               disabled={isProcessingQR}
             >
