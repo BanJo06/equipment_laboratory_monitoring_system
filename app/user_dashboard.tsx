@@ -20,6 +20,8 @@ import { supabase } from "../lib/supabase";
 import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
 import QRCodeModal from "./components/dialogs/QRCodeModal";
+import StartSessionHelpModal from "./components/dialogs/StartSessionHelpModal";
+import UserActiveSessionsHelpModal from "./components/dialogs/UserActiveSessionsHelpModal";
 
 export default function UserDashboard() {
   const { width } = useWindowDimensions();
@@ -39,6 +41,8 @@ export default function UserDashboard() {
     model_name: string | null;
     location: string;
   } | null>(null);
+  const [startHelpVisible, setStartHelpVisible] = useState(false);
+  const [activeHelpVisible, setActiveHelpVisible] = useState(false);
 
   // Equipment selection states
   const [isEquipmentModalVisible, setEquipmentModalVisible] = useState(false);
@@ -337,6 +341,15 @@ export default function UserDashboard() {
         sessionData={qrSessionData}
       />
 
+      <StartSessionHelpModal
+        visible={startHelpVisible}
+        onClose={() => setStartHelpVisible(false)}
+      />
+      <UserActiveSessionsHelpModal
+        visible={activeHelpVisible}
+        onClose={() => setActiveHelpVisible(false)}
+      />
+
       <View className="flex-1 bg-bgPrimary-light">
         <ScrollView
           className="flex-1"
@@ -436,7 +449,9 @@ export default function UserDashboard() {
                       </Text>
                     </View>
                   </View>
-                  <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                  <TouchableOpacity onPress={() => setStartHelpVisible(true)}>
+                    <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                  </TouchableOpacity>
                 </View>
 
                 {/* Select Equipment Input */}
@@ -705,7 +720,9 @@ export default function UserDashboard() {
                       </Text>
                     </View>
                   </View>
-                  <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                  <TouchableOpacity onPress={() => setActiveHelpVisible(true)}>
+                    <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                  </TouchableOpacity>
                 </View>
 
                 {/* DYNAMIC SESSIONS LIST */}
