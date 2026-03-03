@@ -13,6 +13,7 @@ import {
 import DatePickerModal from "../components/dialogs/DatePickerModal";
 import DeleteLogsModal from "../components/dialogs/DeleteLogsModal";
 import ErrorDeleteModal from "../components/dialogs/ErrorDeleteModal";
+import StatusModal from "../components/dialogs/StatusModal";
 import UsageHistoryHelpModal from "../components/dialogs/UsageHistoryHelpModal";
 
 interface EquipmentLog {
@@ -55,6 +56,15 @@ export default function UsageHistory() {
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
+  const [statusConfig, setStatusConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const closeStatusModal = () => {
+    setStatusConfig((prev) => ({ ...prev, visible: false }));
+  };
 
   // --- SORTING STATE ---
   const [sortColumn, setSortColumn] = useState<keyof EquipmentLog | null>(null);
@@ -224,7 +234,11 @@ export default function UsageHistory() {
   // --- DELETE LOGIC ---
   const handleDeletePress = () => {
     if (selectedLogs.length === 0) {
-      alert("Please select at least one log to delete.");
+      setStatusConfig({
+        visible: true,
+        title: "Error",
+        message: "Please select at least one log to delete.",
+      });
       return;
     }
 
@@ -291,6 +305,13 @@ export default function UsageHistory() {
         onClose={() => setIsDatePickerVisible(false)}
         initialDate={selectedDate}
         onSelect={(date) => setSelectedDate(date)}
+      />
+
+      <StatusModal
+        visible={statusConfig.visible}
+        title={statusConfig.title}
+        message={statusConfig.message}
+        onClose={closeStatusModal}
       />
 
       <View

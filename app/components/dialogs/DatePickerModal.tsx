@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Modal,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -31,15 +32,20 @@ export default function DatePickerModal({
 
   // --- CALENDAR STATE ---
   const [viewDate, setViewDate] = useState(new Date());
+  const [showYearPicker, setShowYearPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setViewDate(initialDate || new Date());
+      setShowYearPicker(false); // Reset to calendar view when opened
     }
   }, [visible, initialDate]);
 
   const currentMonth = viewDate.getMonth();
   const currentYear = viewDate.getFullYear();
+
+  // Generate a list of years (e.g., 2000 to 2050)
+  const yearsArray = Array.from({ length: 51 }, (_, i) => 2000 + i);
 
   // --- CALENDAR LOGIC ---
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -80,6 +86,11 @@ export default function DatePickerModal({
     onClose();
   };
 
+  const handleYearSelect = (year: number) => {
+    setViewDate(new Date(year, currentMonth, 1));
+    setShowYearPicker(false);
+  };
+
   return (
     <Modal
       animationType="fade"
@@ -98,102 +109,168 @@ export default function DatePickerModal({
               style={{ fontSize: rf(20) }}
               className="font-inter-bold text-textPrimary-light"
             >
-              Select Date
+              {showYearPicker ? "Select Year" : "Select Date"}
             </Text>
             <TouchableOpacity onPress={onClose} style={{ padding: rs(4) }}>
               <Feather name="x" size={rs(24)} color="#64748b" />
             </TouchableOpacity>
           </View>
 
-          {/* MONTH NAVIGATION */}
+          {/* MONTH & YEAR NAVIGATION */}
           <View className="flex-row justify-between items-center mb-4 px-2">
             <TouchableOpacity
               onPress={handlePrevMonth}
-              style={{ padding: rs(8) }}
+              style={{ padding: rs(8), opacity: showYearPicker ? 0 : 1 }}
+              disabled={showYearPicker}
             >
               <Feather name="chevron-left" size={rs(24)} color="#1d4ed8" />
             </TouchableOpacity>
-            <Text
-              style={{ fontSize: rf(16) }}
-              className="font-inter-bold text-textPrimary-light"
+
+            {/* Clickable Month/Year text to toggle Year Picker */}
+            <TouchableOpacity
+              onPress={() => setShowYearPicker(!showYearPicker)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: rs(4),
+              }}
             >
-              {monthNames[currentMonth]} {currentYear}
-            </Text>
+              <Text
+                style={{ fontSize: rf(16) }}
+                className="font-inter-bold text-textPrimary-light"
+              >
+                {monthNames[currentMonth]} {currentYear}
+              </Text>
+              <Feather
+                name={showYearPicker ? "chevron-up" : "chevron-down"}
+                size={rs(16)}
+                color="#1d4ed8"
+              />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleNextMonth}
-              style={{ padding: rs(8) }}
+              style={{ padding: rs(8), opacity: showYearPicker ? 0 : 1 }}
+              disabled={showYearPicker}
             >
               <Feather name="chevron-right" size={rs(24)} color="#1d4ed8" />
             </TouchableOpacity>
           </View>
 
-          {/* WEEKDAYS */}
-          <View className="flex-row mb-2">
-            {weekDays.map((day) => (
-              <Text
-                key={day}
-                style={{ flex: 1, textAlign: "center", fontSize: rf(14) }}
-                className="font-inter-bold text-textSecondary-light"
-              >
-                {day}
-              </Text>
-            ))}
-          </View>
-
-          {/* DAYS GRID */}
-          <View className="flex-row flex-wrap">
-            {daysArray.map((day, index) => {
-              const isSelected =
-                initialDate &&
-                day === initialDate.getDate() &&
-                currentMonth === initialDate.getMonth() &&
-                currentYear === initialDate.getFullYear();
-
-              const isToday =
-                day === new Date().getDate() &&
-                currentMonth === new Date().getMonth() &&
-                currentYear === new Date().getFullYear();
-
-              return (
-                <View
-                  key={index}
-                  style={{
-                    width: "14.28%", // 100% / 7 columns
-                    aspectRatio: 1,
-                    padding: rs(2),
-                  }}
-                >
-                  {day ? (
+          {showYearPicker ? (
+            /* YEAR PICKER VIEW */
+            <View style={{ height: rs(260) }}>
+              <ScrollView showsVerticalScrollIndicator={true}>
+                <View className="flex-row flex-wrap">
+                  {yearsArray.map((year) => (
                     <TouchableOpacity
-                      onPress={() => handleDaySelect(day)}
+                      key={year}
+                      onPress={() => handleYearSelect(year)}
                       style={{
-                        flex: 1,
-                        justifyContent: "center",
+                        width: "25%", // 4 columns
+                        paddingVertical: rs(12),
                         alignItems: "center",
-                        borderRadius: 100,
-                        backgroundColor: isSelected ? "#1d4ed8" : "transparent",
-                        borderWidth: isToday && !isSelected ? 1 : 0,
-                        borderColor: "#1d4ed8",
                       }}
                     >
-                      <Text
-                        style={{ fontSize: rf(14) }}
-                        className={`font-inter ${
-                          isSelected
-                            ? "text-white font-inter-bold"
-                            : isToday
-                              ? "text-blue-700 font-inter-bold"
-                              : "text-textPrimary-light"
-                        }`}
+                      <View
+                        style={{
+                          backgroundColor:
+                            year === currentYear ? "#1d4ed8" : "transparent",
+                          paddingHorizontal: rs(12),
+                          paddingVertical: rs(6),
+                          borderRadius: 100,
+                        }}
                       >
-                        {day}
-                      </Text>
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className={`font-inter ${
+                            year === currentYear
+                              ? "text-white font-inter-bold"
+                              : "text-textPrimary-light"
+                          }`}
+                        >
+                          {year}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
-                  ) : null}
+                  ))}
                 </View>
-              );
-            })}
-          </View>
+              </ScrollView>
+            </View>
+          ) : (
+            /* DAY PICKER VIEW (CALENDAR GRID) */
+            <View>
+              {/* WEEKDAYS */}
+              <View className="flex-row mb-2">
+                {weekDays.map((day) => (
+                  <Text
+                    key={day}
+                    style={{ flex: 1, textAlign: "center", fontSize: rf(14) }}
+                    className="font-inter-bold text-textSecondary-light"
+                  >
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* DAYS GRID */}
+              <View className="flex-row flex-wrap">
+                {daysArray.map((day, index) => {
+                  const isSelected =
+                    initialDate &&
+                    day === initialDate.getDate() &&
+                    currentMonth === initialDate.getMonth() &&
+                    currentYear === initialDate.getFullYear();
+
+                  const isToday =
+                    day === new Date().getDate() &&
+                    currentMonth === new Date().getMonth() &&
+                    currentYear === new Date().getFullYear();
+
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        width: "14.28%", // 100% / 7 columns
+                        aspectRatio: 1,
+                        padding: rs(2),
+                      }}
+                    >
+                      {day ? (
+                        <TouchableOpacity
+                          onPress={() => handleDaySelect(day)}
+                          style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            borderRadius: 100,
+                            backgroundColor: isSelected
+                              ? "#1d4ed8"
+                              : "transparent",
+                            borderWidth: isToday && !isSelected ? 1 : 0,
+                            borderColor: "#1d4ed8",
+                          }}
+                        >
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className={`font-inter ${
+                              isSelected
+                                ? "text-white font-inter-bold"
+                                : isToday
+                                  ? "text-blue-700 font-inter-bold"
+                                  : "text-textPrimary-light"
+                            }`}
+                          >
+                            {day}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
