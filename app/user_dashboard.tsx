@@ -167,133 +167,6 @@ export default function UserDashboard() {
     router.replace("/");
   };
 
-  // const handleStartSession = async () => {
-  //   if (!selectedEquipment) {
-  //     alert("Please select an equipment first.");
-  //     return;
-  //   }
-
-  //   if (selectedEquipment.units <= 0) {
-  //     alert("This equipment is currently out of stock.");
-  //     return;
-  //   }
-
-  //   if (timeMode === "manual" && !manualTime.trim()) {
-  //     alert("Please enter a manual time.");
-  //     return;
-  //   }
-
-  //   setIsStartingSession(true);
-
-  //   const currentDate = new Date().toISOString().split("T")[0];
-  //   const timeIn =
-  //     timeMode === "now"
-  //       ? new Date().toLocaleTimeString([], {
-  //           hour: "2-digit",
-  //           minute: "2-digit",
-  //         })
-  //       : manualTime;
-
-  //   // Insert log
-  //   const { error: insertError } = await supabase
-  //     .from("equipment_logs")
-  //     .insert([
-  //       {
-  //         full_name: fullNameStr,
-  //         equipment_name: selectedEquipment.name,
-  //         model_name: selectedEquipment.model_name,
-  //         date: currentDate,
-  //         time_in: timeIn,
-  //         status: "In Use",
-  //       },
-  //     ]);
-
-  //   if (insertError) {
-  //     console.error("Insert error:", insertError);
-  //     alert("Failed to start session. Please try again.");
-  //     setIsStartingSession(false);
-  //     return;
-  //   }
-
-  //   // Decrease stock
-  //   const newStock = selectedEquipment.units - 1;
-  //   await supabase
-  //     .from("equipment_inventory")
-  //     .update({ units: newStock })
-  //     .eq("id", selectedEquipment.id);
-
-  //   alert("Session started successfully!");
-  //   setSelectedEquipment(null);
-  //   setManualTime("");
-  //   setTimeMode("now");
-  //   setIsStartingSession(false);
-  //   fetchActiveSessions();
-  //   fetchInventory();
-  // };
-
-  // const handleStopSession = async (session: any) => {
-  //   setIsStoppingSession(true);
-
-  //   const timeOut = new Date().toLocaleTimeString([], {
-  //     hour: "2-digit",
-  //     minute: "2-digit",
-  //   });
-  //   const start = new Date(session.created_at).getTime();
-  //   const current = new Date().getTime();
-  //   const diff = Math.max(0, current - start);
-  //   const hours = Math.floor(diff / (1000 * 60 * 60));
-  //   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  //   const finalDuration = `${hours}H ${minutes}M`;
-
-  //   // Update log out time AND status to completed
-  //   const { error } = await supabase
-  //     .from("equipment_logs")
-  //     .update({
-  //       time_out: timeOut,
-  //       duration: finalDuration,
-  //       status: "completed", // NEW
-  //     })
-  //     .eq("id", session.id);
-
-  //   if (error) {
-  //     console.error("Error stopping session:", error);
-  //     alert("Failed to stop session.");
-  //     setIsStoppingSession(false);
-  //     return;
-  //   }
-
-  //   await returnEquipmentStock(session.equipment_name);
-  //   alert("Session stopped successfully!");
-  //   fetchActiveSessions();
-  //   fetchInventory();
-  //   setIsStoppingSession(false);
-  // };
-
-  // const handleCancelSession = async (session: any) => {
-  //   setIsStoppingSession(true);
-
-  //   // Update status to cancelled, do not record time_out or duration
-  //   const { error } = await supabase
-  //     .from("equipment_logs")
-  //     .update({
-  //       status: "cancelled", // NEW
-  //     })
-  //     .eq("id", session.id);
-
-  //   if (error) {
-  //     console.error("Error cancelling session:", error);
-  //     alert("Failed to cancel session.");
-  //     setIsStoppingSession(false);
-  //     return;
-  //   }
-
-  //   await returnEquipmentStock(session.equipment_name);
-  //   alert("Session cancelled.");
-  //   fetchActiveSessions();
-  //   fetchInventory();
-  //   setIsStoppingSession(false);
-  // };
-
   const handleStartSession = async () => {
     if (!selectedEquipment) {
       setStatusConfig({
@@ -1064,10 +937,7 @@ export default function UserDashboard() {
               </View>
 
               {/* 5. Stats Grid */}
-              <View
-                style={{ gap: rs(16) }}
-                className="flex-row flex-wrap justify-between"
-              >
+              <View style={{ gap: rs(24) }} className="flex-row flex-wrap">
                 {[
                   { label: "My Active", val: activeSessions.length.toString() },
                   { label: "Date/Time", val: liveDateTime },
