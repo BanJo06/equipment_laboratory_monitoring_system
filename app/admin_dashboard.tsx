@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import Accounts from "./screens/accounts";
+import Analytics from "./screens/analytics";
 import EquipmentInventory from "./screens/equipment_inventory";
 import Home from "./screens/home";
 import UsageHistory from "./screens/usage_history";
@@ -360,25 +361,7 @@ export default function AdminDashboard() {
             {activeTab === "Usage History" && <UsageHistory />}
             {activeTab === "Equipment Inventory" && <EquipmentInventory />}
 
-            {activeTab == "Analytics" && (
-              <View
-                style={{
-                  flex: 1,
-                  padding: rs(32),
-                  minHeight: isMobile ? rs(450) : undefined,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                className="bg-white rounded-lg shadow-sm"
-              >
-                <Text
-                  style={{ fontSize: rf(24) }}
-                  className="font-inter-bold text-textPrimary-light text-center"
-                >
-                  {activeTab} Content Coming Soon...
-                </Text>
-              </View>
-            )}
+            {activeTab == "Analytics" && <Analytics />}
           </View>
 
           <View style={{ height: rs(40) }} />
