@@ -4,7 +4,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { CameraView, useCameraPermissions } from "expo-camera"; // NEW IMPORT
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
@@ -80,12 +80,11 @@ export default function Index() {
   };
 
   const handleQRScanned = async ({ data }: { data: string }) => {
-    if (isProcessingQR) return; // Prevent duplicate scans
+    if (isProcessingQR) return;
     setIsProcessingQR(true);
-    setIsScanning(false); // Close camera
+    setIsScanning(false);
 
     try {
-      // 1. Fetch the session based on the scanned QR (which contains the log ID)
       const { data: logData, error: logError } = await supabase
         .from("equipment_logs")
         .select("*")
@@ -97,10 +96,9 @@ export default function Index() {
       }
 
       if (logData.status !== "In Use") {
-        throw new Error("This session is already completed or cancelled.");
+        throw new Error("The session is already completed or cancelled.");
       }
 
-      // 2. Calculate Final Duration
       const start = new Date(logData.created_at).getTime();
       const current = new Date().getTime();
       const diff = Math.max(0, current - start);
@@ -112,7 +110,6 @@ export default function Index() {
         minute: "2-digit",
       });
 
-      // 3. Update Log Status
       const { error: updateError } = await supabase
         .from("equipment_logs")
         .update({
@@ -124,7 +121,6 @@ export default function Index() {
 
       if (updateError) throw updateError;
 
-      // 4. Return Stock to Inventory
       const { data: eqData } = await supabase
         .from("equipment_inventory")
         .select("units")
@@ -154,7 +150,8 @@ export default function Index() {
     }
   };
 
-  const handleLogin = async () => {
+  // --- UNIFIED AUTHENTICATION ---
+  const handleAuth = async (targetRole: "User" | "Admin") => {
     if (!username || !password) {
       setModalConfig({
         visible: true,
@@ -171,7 +168,7 @@ export default function Index() {
       .select("*")
       .eq("username", username)
       .eq("password", password)
-      .eq("role", "User")
+      .eq("role", targetRole)
       .single();
 
     if (fetchError || !data) {
@@ -179,7 +176,7 @@ export default function Index() {
       setModalConfig({
         visible: true,
         title: "Login Failed",
-        message: "Username and password is incorrect, please try again.",
+        message: `Incorrect credentials for ${targetRole} access.`,
       });
       return;
     }
@@ -189,7 +186,7 @@ export default function Index() {
       setModalConfig({
         visible: true,
         title: "Login Failed",
-        message: "This user is already log-in now.",
+        message: "The account is already logged in.",
       });
       return;
     }
@@ -210,14 +207,21 @@ export default function Index() {
       return;
     }
 
-    router.push({
-      pathname: "/user_dashboard",
-      params: {
-        id: data.id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-      },
-    });
+    if (targetRole === "Admin") {
+      router.push({
+        pathname: "/admin_dashboard",
+        params: { id: data.id },
+      });
+    } else {
+      router.push({
+        pathname: "/user_dashboard",
+        params: {
+          id: data.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+        },
+      });
+    }
   };
 
   if (!loaded && !error) return null;
@@ -226,7 +230,6 @@ export default function Index() {
     <SafeAreaView style={{ flex: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* SCANNER MODAL OVERLAY */}
       <Modal visible={isScanning} animationType="slide" transparent={false}>
         <View style={{ flex: 1, backgroundColor: "black" }}>
           <CameraView
@@ -293,7 +296,6 @@ export default function Index() {
           }}
           className="bg-card-light shadow-lg"
         >
-          {/* Header Section */}
           <View className="items-center">
             <View style={{ marginTop: 40, marginBottom: 16 }}>
               <SVG_ICONS.LogIn size={64} />
@@ -314,7 +316,6 @@ export default function Index() {
             </View>
           </View>
 
-          {/* Inputs Section */}
           <View
             style={{
               marginTop: isMobile ? 60 : 96,
@@ -356,13 +357,12 @@ export default function Index() {
             </View>
           </View>
 
-          {/* Buttons Section */}
           <View style={{ marginHorizontal: 16 }}>
             <View style={{ gap: 16 }}>
               <TouchableOpacity
                 style={{ height: 56, opacity: loading ? 0.7 : 1 }}
                 className="w-full rounded-md bg-mainColor-light justify-center items-center"
-                onPress={handleLogin}
+                onPress={() => handleAuth("User")}
                 disabled={loading}
               >
                 <Text
@@ -374,9 +374,10 @@ export default function Index() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ height: 56 }}
+                style={{ height: 56, opacity: loading ? 0.7 : 1 }}
                 className="w-full rounded-md bg-mainColor-light justify-center items-center"
-                onPress={() => router.push("/admin_dashboard")}
+                onPress={() => handleAuth("Admin")}
+                disabled={loading}
               >
                 <Text
                   style={{ fontSize: rf(16) }}
@@ -387,7 +388,6 @@ export default function Index() {
               </TouchableOpacity>
             </View>
 
-            {/* CHANGED: Hooked up to openScanner */}
             <TouchableOpacity
               style={{
                 height: 56,

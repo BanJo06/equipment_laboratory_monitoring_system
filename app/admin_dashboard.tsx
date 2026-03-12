@@ -1,3 +1,4 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
 import Accounts from "./screens/accounts";
 import Analytics from "./screens/analytics";
 import EquipmentInventory from "./screens/equipment_inventory";
@@ -17,9 +19,19 @@ import UsageHistory from "./screens/usage_history";
 
 export default function AdminDashboard() {
   const { width } = useWindowDimensions();
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const adminId = params.id as string;
 
   // --- STATE FOR NAVIGATION ---
   const [activeTab, setActiveTab] = useState("Home");
+
+  // --- LOGOUT STATE ---
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // --- ADMIN DETAILS STATE ---
+  const [adminFirstName, setAdminFirstName] = useState("Admin");
 
   // --- STATE FOR INVENTORY & ONLINE USERS ---
   const [inventory, setInventory] = useState<any[]>([]);
@@ -39,7 +51,47 @@ export default function AdminDashboard() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
+  // --- LOGOUT LOGIC ---
+  const handleLogoutConfirm = async () => {
+    if (!adminId) {
+      router.replace("/");
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    const { error } = await supabase
+      .from("accounts")
+      .update({ isOnline: false })
+      .eq("id", adminId);
+
+    setIsLoggingOut(false);
+    setIsLogoutModalVisible(false);
+
+    if (error) {
+      console.error("Failed to update online status on logout:", error);
+      alert("Failed to securely log out. Please try again.");
+    } else {
+      router.replace("/");
+    }
+  };
+
   // --- DATA FETCHING ---
+  const fetchAdminDetails = async () => {
+    if (!adminId) return;
+
+    const { data, error } = await supabase
+      .from("accounts")
+      .select("first_name")
+      .eq("id", adminId)
+      .single();
+
+    if (!error && data) {
+      setAdminFirstName(data.first_name);
+    } else if (error) {
+      console.error("Error fetching admin details:", error);
+    }
+  };
   const fetchInventory = async () => {
     setLoadingInventory(true);
     const { data, error } = await supabase
@@ -77,6 +129,7 @@ export default function AdminDashboard() {
 
   // --- INITIAL FETCH & REALTIME SUBSCRIPTION ---
   useEffect(() => {
+    fetchAdminDetails();
     fetchInventory();
     fetchOnlineUsers();
 
@@ -106,6 +159,12 @@ export default function AdminDashboard() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View className="flex-1 bg-bgPrimary-light">
+        <LogoutConfirmationModal
+          visible={isLogoutModalVisible}
+          onClose={() => setIsLogoutModalVisible(false)}
+          onConfirm={handleLogoutConfirm}
+          isLoggingOut={isLoggingOut}
+        />
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ padding: rs(24) }}
@@ -138,7 +197,7 @@ export default function AdminDashboard() {
                     style={{ fontSize: rf(34) }}
                     className="font-inter-bold text-textPrimary-light"
                   >
-                    Hello, Admin Joed!
+                    Hello, {adminFirstName}!
                   </Text>
                   <Text
                     style={{ fontSize: rf(16) }}
@@ -150,6 +209,7 @@ export default function AdminDashboard() {
                 <TouchableOpacity
                   style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
                   className="bg-mainColor-light rounded-md"
+                  onPress={() => setIsLogoutModalVisible(true)}
                 >
                   <Text
                     style={{ fontSize: rf(16) }}
