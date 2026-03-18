@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -158,6 +158,7 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-bgPrimary-light">
         <LogoutConfirmationModal
           visible={isLogoutModalVisible}

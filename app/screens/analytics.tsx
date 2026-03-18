@@ -10,6 +10,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import AnalyticsHelpModal from "../components/dialogs/AnalyticsHelpModal";
 import DataListModal, { DataItem } from "../components/dialogs/DataListModal";
 
 interface AnalyticsLists {
@@ -46,6 +47,7 @@ export default function Analytics() {
   const [activeModal, setActiveModal] = useState<keyof AnalyticsLists | null>(
     null,
   );
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // --- HELPER: FORMAT TIME ---
   const formatTotalTime = (totalMins: number) => {
@@ -247,6 +249,11 @@ export default function Analytics() {
         data={lists.peak}
       />
 
+      <AnalyticsHelpModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -279,7 +286,7 @@ export default function Analytics() {
             </Text>
           </View>
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setHelpModalVisible(true)}>
           <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
         </TouchableOpacity>
       </View>
