@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -22,6 +22,7 @@ interface DataListModalProps {
   color: string;
   bg: string;
   data: DataItem[];
+  onFilterChange?: (filter: string) => void;
 }
 
 export default function DataListModal({
@@ -32,6 +33,7 @@ export default function DataListModal({
   color,
   bg,
   data,
+  onFilterChange,
 }: DataListModalProps) {
   const { width } = useWindowDimensions();
 
@@ -40,6 +42,17 @@ export default function DataListModal({
   const scale = isMobile ? Math.min(width / 430, 1) : Math.min(width / 1440, 1);
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
+
+  // --- FILTER STATE ---
+  const [activeFilter, setActiveFilter] = useState("All time");
+  const filters = ["24 hours", "3 days", "7 days", "30 days", "All time"];
+
+  const handleFilterSelect = (filter: string) => {
+    setActiveFilter(filter);
+    if (onFilterChange) {
+      onFilterChange(filter);
+    }
+  };
 
   return (
     <Modal
@@ -54,7 +67,7 @@ export default function DataListModal({
           className="bg-white rounded-xl shadow-lg"
         >
           {/* HEADER */}
-          <View className="flex-row justify-between items-center mb-6">
+          <View className="flex-row justify-between items-center mb-4">
             <View className="flex-row items-center flex-1 pr-4">
               <View className={`${bg} p-3 rounded-full mr-4`}>
                 <Feather name={icon} size={rs(24)} color={color} />
@@ -72,8 +85,46 @@ export default function DataListModal({
             </TouchableOpacity>
           </View>
 
+          {/* FILTER MENU */}
+          <View style={{ marginBottom: rs(16) }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: rs(8), paddingBottom: rs(4) }}
+            >
+              {filters.map((filter) => {
+                const isActive = activeFilter === filter;
+                return (
+                  <TouchableOpacity
+                    key={filter}
+                    onPress={() => handleFilterSelect(filter)}
+                    style={{
+                      paddingVertical: rs(6),
+                      paddingHorizontal: rs(12),
+                      backgroundColor: isActive ? color : "#f1f5f9",
+                      borderRadius: rs(20),
+                      borderWidth: 1,
+                      borderColor: isActive ? color : "#e2e8f0",
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: rf(14) }}
+                      className={`font-inter ${
+                        isActive
+                          ? "font-inter-bold text-white"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {filter}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {/* LEADERBOARD LIST */}
-          <View style={{ maxHeight: rs(450) }}>
+          <View style={{ maxHeight: rs(400) }}>
             <ScrollView showsVerticalScrollIndicator={true}>
               {data.length === 0 ? (
                 <Text
@@ -112,7 +163,9 @@ export default function DataListModal({
                     >
                       <Text
                         style={{ fontSize: rf(14) }}
-                        className={`font-inter-bold ${index < 3 ? "text-white" : "text-gray-600"}`}
+                        className={`font-inter-bold ${
+                          index < 3 ? "text-white" : "text-gray-600"
+                        }`}
                       >
                         #{index + 1}
                       </Text>

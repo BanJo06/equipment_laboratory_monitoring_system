@@ -41,7 +41,7 @@ export default function AnalyticsHelpModal({
           <View className="flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
               <View className="bg-blue-100 p-3 rounded-full mr-4">
-                <Feather name="list" size={rs(24)} color="#1d4ed8" />
+                <Feather name="bar-chart-2" size={rs(24)} color="#1d4ed8" />
               </View>
               <Text
                 style={{ fontSize: rf(24) }}
@@ -60,15 +60,16 @@ export default function AnalyticsHelpModal({
             style={{ fontSize: rf(16), marginBottom: rs(24) }}
             className="font-inter text-textSecondary-light leading-relaxed"
           >
-            The Usage History menu serves as the central ledger for all
-            laboratory equipment activities and sessions.
+            The Analytics menu provides visual insights and detailed filtering
+            options for equipment usage data.
           </Text>
 
           {/* Feature List */}
           <View style={{ gap: rs(20), marginBottom: rs(32) }}>
+            {/* Feature 1 */}
             <View className="flex-row items-start">
               <Feather
-                name="clock"
+                name="pie-chart"
                 size={rs(20)}
                 color="#1d4ed8"
                 style={{ marginTop: rs(2), marginRight: rs(16) }}
@@ -78,21 +79,22 @@ export default function AnalyticsHelpModal({
                   style={{ fontSize: rf(16) }}
                   className="font-inter-bold text-textPrimary-light mb-1"
                 >
-                  Track Live Durations
+                  View Usage Trends
                 </Text>
                 <Text
                   style={{ fontSize: rf(14) }}
                   className="font-inter text-textSecondary-light leading-relaxed"
                 >
-                  Monitor ongoing sessions with real-time ticking clocks for any
-                  equipment currently marked as "In Use".
+                  Visualize equipment activity over time with detailed charts,
+                  graphs, and performance metrics.
                 </Text>
               </View>
             </View>
 
+            {/* Feature 2 */}
             <View className="flex-row items-start">
               <Feather
-                name="filter"
+                name="calendar"
                 size={rs(20)}
                 color="#16a34a"
                 style={{ marginTop: rs(2), marginRight: rs(16) }}
@@ -102,23 +104,24 @@ export default function AnalyticsHelpModal({
                   style={{ fontSize: rf(16) }}
                   className="font-inter-bold text-textPrimary-light mb-1"
                 >
-                  Sort & Organize
+                  Custom Date Ranges
                 </Text>
                 <Text
                   style={{ fontSize: rf(14) }}
                   className="font-inter text-textSecondary-light leading-relaxed"
                 >
-                  Click table headers to arrange logs in ascending or descending
-                  order by user, equipment name, or time used.
+                  Filter analytics data by specific days, weeks, or months to
+                  analyze historical patterns and peak hours.
                 </Text>
               </View>
             </View>
 
+            {/* Feature 3 */}
             <View className="flex-row items-start">
               <Feather
-                name="trash-2"
+                name="download"
                 size={rs(20)}
-                color="#dc2626"
+                color="#9333ea"
                 style={{ marginTop: rs(2), marginRight: rs(16) }}
               />
               <View className="flex-1">
@@ -126,14 +129,14 @@ export default function AnalyticsHelpModal({
                   style={{ fontSize: rf(16) }}
                   className="font-inter-bold text-textPrimary-light mb-1"
                 >
-                  Manage Records
+                  Export Reports
                 </Text>
                 <Text
                   style={{ fontSize: rf(14) }}
                   className="font-inter text-textSecondary-light leading-relaxed"
                 >
-                  Use the checkboxes to select multiple completed or cancelled
-                  logs for bulk deletion. Active sessions cannot be deleted.
+                  Download analytics data as CSV or PDF files for external
+                  reporting and permanent record-keeping.
                 </Text>
               </View>
             </View>

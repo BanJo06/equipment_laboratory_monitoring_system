@@ -198,7 +198,7 @@ export default function AdminDashboard() {
                     style={{ fontSize: rf(34) }}
                     className="font-inter-bold text-textPrimary-light"
                   >
-                    Hello, {adminFirstName}!
+                    Hello, Admin {adminFirstName}!
                   </Text>
                   <Text
                     style={{ fontSize: rf(16) }}
