@@ -199,9 +199,14 @@ export default function EquipmentInventory() {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-row justify-start mb-4">
+      <View className="flex-row mb-4">
         <TouchableOpacity
-          style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+          style={{
+            paddingVertical: rs(10),
+            paddingHorizontal: rs(16),
+            minWidth: rs(140), // Added minWidth for consistency
+            alignItems: "center", // Center the text within that width
+          }}
           className="bg-mainColor-light rounded-md"
           onPress={openAddModal}
         >
@@ -240,7 +245,7 @@ export default function EquipmentInventory() {
         </View>
 
         {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
-        <View style={{ height: rs(544), zIndex: 10 }}>
+        <View style={{ height: Math.floor(rs(544)), zIndex: 10 }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }} // Large padding so bottom dropdowns aren't clipped

@@ -202,9 +202,15 @@ export default function Accounts() {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-row justify-between mb-4">
+      <View className="flex-row justify-between items-center mb-4">
         <TouchableOpacity
-          style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+          style={{
+            height: rs(40),
+            paddingHorizontal: rs(16),
+            justifyContent: "center",
+            alignItems: "center",
+            minWidth: rs(140),
+          }}
           className="bg-mainColor-light rounded-md"
           onPress={openAddModal}
         >
@@ -219,12 +225,17 @@ export default function Accounts() {
         <TextInput
           style={[
             {
-              padding: rs(12),
+              height: rs(40),
+              paddingVertical: 0,
+              paddingHorizontal: rs(12),
               fontSize: rf(14),
               borderRadius: 6,
               minWidth: rs(200),
             },
-            { outlineStyle: "none" } as any,
+            {
+              outlineStyle: "none",
+              textAlignVertical: "center",
+            } as any,
           ]}
           className="font-inter border border-borderStrong-light text-textPrimary-light bg-[#F8FAFC]"
           placeholder="Search name..."
@@ -271,7 +282,7 @@ export default function Accounts() {
         </View>
 
         {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
-        <View style={{ height: rs(544), zIndex: 10 }}>
+        <View style={{ height: Math.floor(rs(544)), zIndex: 10 }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }}
