@@ -242,7 +242,7 @@ export default function EquipmentInventory() {
         {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
         <View style={{ height: rs(544), zIndex: 10 }}>
           <ScrollView
-            style={{ flex: 1, overflow: "visible" }}
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }} // Large padding so bottom dropdowns aren't clipped
             nestedScrollEnabled={true}
             showsVerticalScrollIndicator={true}
@@ -319,13 +319,13 @@ export default function EquipmentInventory() {
                         <Pressable
                           style={
                             {
-                              position: "absolute",
-                              top: -5000,
-                              left: -5000,
-                              width: 10000,
-                              height: 10000,
+                              position: "fixed",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
                               zIndex: 90,
-                              cursor: "auto",
+                              backgroundColor: "transparent",
                             } as any
                           }
                           onPress={() => setActiveDropdown(null)}

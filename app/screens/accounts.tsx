@@ -273,7 +273,7 @@ export default function Accounts() {
         {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
         <View style={{ height: rs(544), zIndex: 10 }}>
           <ScrollView
-            style={{ flex: 1, overflow: "visible" }}
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }}
             nestedScrollEnabled={true}
             showsVerticalScrollIndicator={true}
@@ -363,21 +363,23 @@ export default function Accounts() {
 
                     {activeDropdown === item.id && (
                       <>
+                        {/* 1. Full-screen transparent backdrop */}
                         <Pressable
                           style={
                             {
-                              position: "absolute",
-                              top: -5000,
-                              left: -5000,
-                              width: 10000,
-                              height: 10000,
+                              position: "fixed", // Use 'fixed' for Web to cover viewport
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
                               zIndex: 90,
-                              cursor: "auto",
+                              backgroundColor: "transparent",
                             } as any
                           }
                           onPress={() => setActiveDropdown(null)}
                         />
 
+                        {/* 2. Your Dropdown Menu */}
                         <View
                           className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
                           style={{
@@ -399,6 +401,7 @@ export default function Accounts() {
                               Edit
                             </Text>
                           </TouchableOpacity>
+
                           <TouchableOpacity
                             style={{ padding: rs(10) }}
                             onPress={() => confirmDelete(item.id)}
