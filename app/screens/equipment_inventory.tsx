@@ -40,6 +40,10 @@ export default function EquipmentInventory() {
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [selectedEquipmentDetails, setSelectedEquipmentDetails] =
     useState<any>(null);
+  const [sortConfig, setSortConfig] = useState<{
+    key: "name" | "units" | null;
+    direction: "asc" | "desc" | null;
+  }>({ key: null, direction: null });
 
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
@@ -91,6 +95,33 @@ export default function EquipmentInventory() {
   useEffect(() => {
     loadCachedData();
   }, []);
+
+  const requestSort = (key: "name" | "units") => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedEquipment = React.useMemo(() => {
+    let sortableItems = [...equipmentList];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key!];
+        const bValue = b[sortConfig.key!];
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [equipmentList, sortConfig]);
 
   const openAddModal = () => {
     setEquipmentToEdit(null);
@@ -225,22 +256,66 @@ export default function EquipmentInventory() {
         className="bg-white rounded-lg border-[2px] border-borderStrong-light"
       >
         {/* Fixed Table Header */}
+        {/* Fixed Table Header */}
         <View
           style={{ paddingBottom: rs(8), marginBottom: rs(8), zIndex: 11 }}
           className="flex-row border-b border-[#6684B0] items-center"
         >
-          <Text
-            style={{ fontSize: rf(16), flex: 2 }}
-            className="font-inter-bold text-textPrimary-light"
+          {/* Equipment Name Sortable Header */}
+          <TouchableOpacity
+            onPress={() => requestSort("name")}
+            style={{
+              flex: 2,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: rs(4),
+            }}
           >
-            Equipment Name
-          </Text>
-          <Text
-            style={{ fontSize: rf(16), flex: 0.5 }}
-            className="text-center font-inter-bold text-textPrimary-light"
+            <Text
+              style={{ fontSize: rf(16) }}
+              className="font-inter-bold text-textPrimary-light"
+            >
+              Equipment Name
+            </Text>
+            {sortConfig.key === "name" && (
+              <Feather
+                name={
+                  sortConfig.direction === "asc" ? "arrow-up" : "arrow-down"
+                }
+                size={rs(14)}
+                color="#1d4ed8"
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* Stock Sortable Header */}
+          <TouchableOpacity
+            onPress={() => requestSort("units")}
+            style={{
+              flex: 0.5,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: rs(4),
+            }}
           >
-            Stock
-          </Text>
+            <Text
+              style={{ fontSize: rf(16) }}
+              className="text-center font-inter-bold text-textPrimary-light"
+            >
+              Stock
+            </Text>
+            {sortConfig.key === "units" && (
+              <Feather
+                name={
+                  sortConfig.direction === "asc" ? "arrow-up" : "arrow-down"
+                }
+                size={rs(14)}
+                color="#1d4ed8"
+              />
+            )}
+          </TouchableOpacity>
+
           <View style={{ flex: 1.2 }} />
         </View>
 
@@ -274,7 +349,7 @@ export default function EquipmentInventory() {
                 No equipment found. Add an item to get started.
               </Text>
             ) : (
-              equipmentList.map((item, idx) => (
+              sortedEquipment.map((item, idx) => (
                 <View
                   key={item.id || idx}
                   style={{

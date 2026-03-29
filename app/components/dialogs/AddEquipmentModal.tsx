@@ -107,17 +107,42 @@ export default function AddEquipmentModal({
 
     setIsLoading(true);
 
-    // Data object matching the equipment_inventory table columns
     const equipmentData = {
-      name: equipmentName,
+      name: equipmentName.trim(),
       units: parseInt(units, 10) || 0,
-      model_name: modelName,
-      location: location,
+      model_name: modelName.trim(),
+      location: location.trim(),
     };
 
     try {
+      // 1. DUPLICATE CHECK LOGIC
+      let query = supabase
+        .from("equipment_inventory")
+        .select("id")
+        .eq("name", equipmentData.name)
+        .eq("model_name", equipmentData.model_name);
+
+      // If we are editing, exclude the current item's ID from the search
       if (equipmentToEdit) {
-        // EDIT LOGIC: Make sure this targets "equipment_inventory"
+        query = query.neq("id", equipmentToEdit.id);
+      }
+
+      const { data: existingItems, error: fetchError } = await query;
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      // 2. TRIGGER ERROR MODAL IF EXISTS
+      if (existingItems && existingItems.length > 0) {
+        triggerStatus(
+          "Error",
+          "Your input values already exist in the database.",
+        );
+        setIsLoading(false);
+        return; // Stop the save process
+      }
+
+      // 3. PROCEED WITH SAVE/UPDATE IF NO DUPLICATE
+      if (equipmentToEdit) {
         const { error } = await supabase
           .from("equipment_inventory")
           .update(equipmentData)
@@ -126,7 +151,6 @@ export default function AddEquipmentModal({
         if (error) throw new Error(error.message);
         triggerStatus("Success", "Equipment successfully updated.");
       } else {
-        // ADD LOGIC: Make sure this targets "equipment_inventory"
         const { error } = await supabase
           .from("equipment_inventory")
           .insert([equipmentData]);
@@ -134,7 +158,8 @@ export default function AddEquipmentModal({
         if (error) throw new Error(error.message);
         triggerStatus("Success", "Equipment successfully added.");
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Offline fallback logic remains the same
       try {
         const existingOfflineData =
           await AsyncStorage.getItem("offline_equipment");
@@ -142,7 +167,7 @@ export default function AddEquipmentModal({
           ? JSON.parse(existingOfflineData)
           : [];
 
-        offlineEquipment.push({ ...equipmentData, id: Date.now().toString() }); // Assign a temporary ID for offline edits
+        offlineEquipment.push({ ...equipmentData, id: Date.now().toString() });
         await AsyncStorage.setItem(
           "offline_equipment",
           JSON.stringify(offlineEquipment),
