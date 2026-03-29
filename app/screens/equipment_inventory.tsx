@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
@@ -25,31 +26,28 @@ export default function EquipmentInventory() {
   const [helpModalVisible, setHelpModalVisible] = useState(false);
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [equipmentToEdit, setEquipmentToEdit] = useState<any>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  // States for deleting
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<string | null>(
     null,
   );
 
-  // States for viewing details
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [selectedEquipmentDetails, setSelectedEquipmentDetails] =
     useState<any>(null);
+
   const [sortConfig, setSortConfig] = useState<{
-    key: "name" | "units" | null;
+    key: "name" | "units" | "model_name" | null;
     direction: "asc" | "desc" | null;
   }>({ key: null, direction: null });
 
   const isMobile = width < 1024;
-  const desktopScale = Math.min(width / 1440, 1);
-  const mobileScale = Math.min(width / 430, 1);
-  const scale = isMobile ? mobileScale : desktopScale;
-
+  const scale = isMobile ? Math.min(width / 430, 1) : Math.min(width / 1440, 1);
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
@@ -74,10 +72,7 @@ export default function EquipmentInventory() {
         .select("*")
         .order("id", { ascending: true });
 
-      if (error) {
-        console.error("Fetch error:", error.message);
-        return;
-      }
+      if (error) throw error;
       if (data) {
         setEquipmentList(data);
         await AsyncStorage.setItem(
@@ -86,7 +81,7 @@ export default function EquipmentInventory() {
         );
       }
     } catch (error) {
-      console.error("Unexpected fetch error:", error);
+      console.error("Fetch error:", error);
     } finally {
       setIsFetching(false);
     }
@@ -96,7 +91,7 @@ export default function EquipmentInventory() {
     loadCachedData();
   }, []);
 
-  const requestSort = (key: "name" | "units") => {
+  const requestSort = (key: "name" | "units" | "model_name") => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
@@ -104,24 +99,28 @@ export default function EquipmentInventory() {
     setSortConfig({ key, direction });
   };
 
-  const sortedEquipment = React.useMemo(() => {
-    let sortableItems = [...equipmentList];
+  const filteredAndSortedEquipment = React.useMemo(() => {
+    let result = equipmentList.filter((item) => {
+      const nameMatch = item.name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const modelMatch = item.model_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      return nameMatch || modelMatch;
+    });
+
     if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
+      result.sort((a, b) => {
         const aValue = a[sortConfig.key!];
         const bValue = b[sortConfig.key!];
-
-        if (aValue < bValue) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
-    return sortableItems;
-  }, [equipmentList, sortConfig]);
+    return result;
+  }, [equipmentList, sortConfig, searchQuery]);
 
   const openAddModal = () => {
     setEquipmentToEdit(null);
@@ -159,9 +158,7 @@ export default function EquipmentInventory() {
         visible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
         equipmentToEdit={equipmentToEdit}
-        onSuccess={() => {
-          fetchEquipment(false);
-        }}
+        onSuccess={() => fetchEquipment(false)}
       />
 
       <DeleteEquipmentModal
@@ -192,7 +189,7 @@ export default function EquipmentInventory() {
         onClose={() => setHelpModalVisible(false)}
       />
 
-      {/* Title Header */}
+      {/* Header */}
       <View
         style={{
           marginBottom: rs(16),
@@ -230,13 +227,14 @@ export default function EquipmentInventory() {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-row mb-4">
+      {/* Actions & Search */}
+      <View className="flex-row justify-between items-center mb-4">
         <TouchableOpacity
           style={{
             paddingVertical: rs(10),
             paddingHorizontal: rs(16),
-            minWidth: rs(140), // Added minWidth for consistency
-            alignItems: "center", // Center the text within that width
+            minWidth: rs(140),
+            alignItems: "center",
           }}
           className="bg-mainColor-light rounded-md"
           onPress={openAddModal}
@@ -248,24 +246,38 @@ export default function EquipmentInventory() {
             Add Item
           </Text>
         </TouchableOpacity>
+
+        <TextInput
+          style={[
+            {
+              height: rs(40),
+              paddingHorizontal: rs(12),
+              fontSize: rf(14),
+              borderRadius: 6,
+              minWidth: rs(250),
+            },
+            { outlineStyle: "none" } as any,
+          ]}
+          className="font-inter border border-borderStrong-light text-textPrimary-light bg-[#F8FAFC]"
+          placeholder="Search name or model..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
 
-      {/* TABLE OUTER CONTAINER */}
+      {/* Table */}
       <View
         style={{ padding: rs(32), zIndex: 10 }}
         className="bg-white rounded-lg border-[2px] border-borderStrong-light"
       >
-        {/* Fixed Table Header */}
-        {/* Fixed Table Header */}
         <View
           style={{ paddingBottom: rs(8), marginBottom: rs(8), zIndex: 11 }}
           className="flex-row border-b border-[#6684B0] items-center"
         >
-          {/* Equipment Name Sortable Header */}
           <TouchableOpacity
             onPress={() => requestSort("name")}
             style={{
-              flex: 2,
+              flex: 1.5,
               flexDirection: "row",
               alignItems: "center",
               gap: rs(4),
@@ -275,7 +287,7 @@ export default function EquipmentInventory() {
               style={{ fontSize: rf(16) }}
               className="font-inter-bold text-textPrimary-light"
             >
-              Equipment Name
+              Name
             </Text>
             {sortConfig.key === "name" && (
               <Feather
@@ -288,11 +300,36 @@ export default function EquipmentInventory() {
             )}
           </TouchableOpacity>
 
-          {/* Stock Sortable Header */}
+          <TouchableOpacity
+            onPress={() => requestSort("model_name")}
+            style={{
+              flex: 1.5,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: rs(4),
+            }}
+          >
+            <Text
+              style={{ fontSize: rf(16) }}
+              className="font-inter-bold text-textPrimary-light"
+            >
+              Model Name
+            </Text>
+            {sortConfig.key === "model_name" && (
+              <Feather
+                name={
+                  sortConfig.direction === "asc" ? "arrow-up" : "arrow-down"
+                }
+                size={rs(14)}
+                color="#1d4ed8"
+              />
+            )}
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => requestSort("units")}
             style={{
-              flex: 0.5,
+              flex: 0.6,
               flexDirection: "row",
               justifyContent: "center",
               alignItems: "center",
@@ -316,28 +353,21 @@ export default function EquipmentInventory() {
             )}
           </TouchableOpacity>
 
-          <View style={{ flex: 1.2 }} />
+          <View style={{ flex: 0.8 }} />
         </View>
 
-        {/* STATIC HEIGHT SCROLLABLE CONTAINER */}
         <View style={{ height: Math.floor(rs(544)), zIndex: 10 }}>
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }} // Large padding so bottom dropdowns aren't clipped
-            nestedScrollEnabled={true}
-            showsVerticalScrollIndicator={true}
+            contentContainerStyle={{ paddingBottom: rs(120), flexGrow: 1 }}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
           >
             {isFetching && equipmentList.length === 0 ? (
               <View style={{ padding: rs(32), alignItems: "center" }}>
                 <ActivityIndicator size="large" color="#1d4ed8" />
-                <Text
-                  style={{ marginTop: rs(16), fontSize: rf(14) }}
-                  className="font-inter text-textSecondary-light"
-                >
-                  Loading equipment...
-                </Text>
               </View>
-            ) : equipmentList.length === 0 ? (
+            ) : filteredAndSortedEquipment.length === 0 ? (
               <Text
                 style={{
                   padding: rs(16),
@@ -346,27 +376,34 @@ export default function EquipmentInventory() {
                 }}
                 className="font-inter text-[#6684B0]"
               >
-                No equipment found. Add an item to get started.
+                {searchQuery ? "No matches found." : "No equipment found."}
               </Text>
             ) : (
-              sortedEquipment.map((item, idx) => (
+              filteredAndSortedEquipment.map((item, idx) => (
                 <View
                   key={item.id || idx}
                   style={{
                     paddingVertical: rs(12),
-                    zIndex: activeDropdown === item.id ? 10 : 1,
+                    zIndex: activeDropdown === item.id ? 100 : 1,
                   }}
-                  className={`flex-row items-center ${idx !== equipmentList.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
+                  className={`flex-row items-center ${idx !== filteredAndSortedEquipment.length - 1 ? "border-b border-[#DADFE5]" : ""}`}
                 >
                   <Text
-                    style={{ fontSize: rf(16), flex: 2 }}
+                    style={{ fontSize: rf(16), flex: 1.5 }}
                     className="font-inter text-textPrimary-light"
                     numberOfLines={1}
                   >
                     {item.name}
                   </Text>
                   <Text
-                    style={{ fontSize: rf(16), flex: 0.5 }}
+                    style={{ fontSize: rf(16), flex: 1.5 }}
+                    className="font-inter text-textSecondary-light"
+                    numberOfLines={1}
+                  >
+                    {item.model_name || "N/A"}
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(16), flex: 0.6 }}
                     className="font-inter text-center text-textPrimary-light"
                   >
                     {item.units}
@@ -374,13 +411,13 @@ export default function EquipmentInventory() {
 
                   <View
                     style={{
-                      flex: 1.2,
+                      flex: 0.8,
                       alignItems: "flex-end",
                       position: "relative",
                     }}
                   >
                     <TouchableOpacity
-                      style={{ padding: rs(4), marginRight: rs(8) }}
+                      style={{ padding: rs(4) }}
                       onPress={() =>
                         setActiveDropdown(
                           activeDropdown === item.id ? null : item.id,
@@ -396,10 +433,11 @@ export default function EquipmentInventory() {
 
                     {activeDropdown === item.id && (
                       <>
+                        {/* INVISIBLE DISMISS LAYER - THIS ALLOWS CLICK OUTSIDE TO WORK */}
                         <Pressable
                           style={
                             {
-                              position: "fixed",
+                              position: "fixed", // Use 'fixed' for web or 'absolute' for mobile
                               top: 0,
                               left: 0,
                               right: 0,
@@ -411,12 +449,12 @@ export default function EquipmentInventory() {
                           onPress={() => setActiveDropdown(null)}
                         />
 
+                        {/* ACTUAL MENU */}
                         <View
                           className="absolute top-full right-0 bg-white border border-borderStrong-light rounded-md shadow-sm"
                           style={{
                             minWidth: rs(100),
                             zIndex: 100,
-                            elevation: 5,
                             marginTop: rs(4),
                           }}
                         >
