@@ -8,6 +8,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TextInput,
@@ -77,6 +78,7 @@ export default function UserDashboard() {
 
   // NEW: Inventory state for the Available Equipments table
   const [inventory, setInventory] = useState<any[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(true);
 
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
@@ -137,6 +139,7 @@ export default function UserDashboard() {
   };
 
   const fetchInventory = async () => {
+    setLoadingInventory(true);
     const { data, error } = await supabase
       .from("equipment_inventory")
       .select("*")
@@ -144,7 +147,10 @@ export default function UserDashboard() {
 
     if (!error && data) {
       setInventory(data);
+    } else if (error) {
+      console.error("Error fetching inventory:", error);
     }
+    setLoadingInventory(false);
   };
 
   useEffect(() => {
@@ -739,35 +745,60 @@ export default function UserDashboard() {
                 </View>
 
                 {/* Dynamic Rows */}
-                {inventory.map((item) => (
-                  <View
-                    key={item.id}
-                    style={{ paddingVertical: rs(8) }}
-                    className="flex-row items-center border-b border-[#DADFE5]"
+                <View style={{ height: rs(139), overflow: "hidden" }}>
+                  <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{
+                      paddingBottom: rs(16),
+                      flexGrow: 1,
+                    }}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
                   >
-                    <Text
-                      style={{ fontSize: rf(14), flex: 2 }}
-                      className="font-inter text-textPrimary-light"
-                      numberOfLines={1}
-                    >
-                      {item.name} - {item.model_name}
-                    </Text>
-                    <Text
-                      style={{ fontSize: rf(14), flex: 0.5 }}
-                      className="font-inter text-center text-textPrimary-light"
-                    >
-                      {item.units}
-                    </Text>
-
-                    {/* NEW: Dynamic "In Use" condition */}
-                    <Text
-                      style={{ fontSize: rf(14), flex: 1.2 }}
-                      className={`font-inter-bold text-right ${item.units > 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {item.units > 0 ? "Available" : "In Use"}
-                    </Text>
-                  </View>
-                ))}
+                    {loadingInventory ? (
+                      <ActivityIndicator
+                        size="small"
+                        color="#1d4ed8"
+                        style={{ marginTop: 20 }}
+                      />
+                    ) : inventory.length === 0 ? (
+                      <Text className="text-center text-gray-500 font-inter mt-4">
+                        No equipment found.
+                      </Text>
+                    ) : (
+                      inventory.map((item) => (
+                        <View
+                          key={item.id}
+                          style={{ paddingVertical: rs(8) }}
+                          className="flex-row items-center border-b border-[#DADFE5]"
+                        >
+                          <Text
+                            style={{ fontSize: rf(14), flex: 2 }}
+                            className="font-inter text-textPrimary-light pr-2"
+                            numberOfLines={2}
+                          >
+                            {item.name}{" "}
+                            {item.model_name ? `- ${item.model_name}` : ""}
+                          </Text>
+                          <Text
+                            style={{ fontSize: rf(14), flex: 0.5 }}
+                            className="font-inter text-center text-textPrimary-light"
+                          >
+                            {item.units}
+                          </Text>
+                          <Text
+                            style={{ fontSize: rf(14), flex: 1.2 }}
+                            className={`font-inter-bold text-right ${
+                              item.units > 0 ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {item.units > 0 ? "Available" : "In Use"}
+                          </Text>
+                        </View>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
               </View>
             </View>
 
