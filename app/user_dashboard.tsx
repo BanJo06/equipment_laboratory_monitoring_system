@@ -303,36 +303,75 @@ export default function UserDashboard() {
   const handleCancelSession = async (session: any) => {
     setIsStoppingSession(true);
 
-    // Update status to cancelled, do not record time_out or duration
-    const { error } = await supabase
-      .from("equipment_logs")
-      .update({
-        status: "cancelled", // NEW
-      })
-      .eq("id", session.id);
+    // 1. Calculate the elapsed time in minutes
+    const start = new Date(session.created_at).getTime();
+    const current = new Date().getTime();
+    const diffInMs = Math.max(0, current - start);
+    const diffInMinutes = diffInMs / (1000 * 60);
 
-    if (error) {
-      console.error("Error cancelling session:", error);
+    let statusTitle = "";
+    let statusMsg = "";
+
+    try {
+      if (diffInMinutes >= 10) {
+        // --- CASE A: 10+ minutes elapsed -> Mark as Completed ---
+        const timeOut = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        const hours = Math.floor(diffInMinutes / 60);
+        const minutes = Math.floor(diffInMinutes % 60);
+        const finalDuration = `${hours}H ${minutes}M`;
+
+        const { error } = await supabase
+          .from("equipment_logs")
+          .update({
+            time_out: timeOut,
+            duration: finalDuration,
+            status: "completed",
+          })
+          .eq("id", session.id);
+
+        if (error) throw error;
+
+        statusTitle = "Session Completed";
+        statusMsg =
+          "Usage exceeded 10 minutes. Log has been marked as completed.";
+      } else {
+        // --- CASE B: Less than 10 minutes -> Delete/Remove Log ---
+        const { error } = await supabase
+          .from("equipment_logs")
+          .delete()
+          .eq("id", session.id);
+
+        if (error) throw error;
+
+        statusTitle = "Log Removed";
+        statusMsg =
+          "Session cancelled within 10 minutes. The log was not recorded.";
+      }
+
+      // Common Cleanup: Return stock and refresh UI
+      await returnEquipmentStock(session.equipment_name);
+
+      setStatusConfig({
+        visible: true,
+        title: statusTitle,
+        message: statusMsg,
+      });
+    } catch (error) {
+      console.error("Error processing cancellation:", error);
       setStatusConfig({
         visible: true,
         title: "Error",
-        message: "Failed to cancel session.",
+        message: "An error occurred while processing the cancellation.",
       });
+    } finally {
+      fetchActiveSessions();
+      fetchInventory();
       setIsStoppingSession(false);
-      return;
     }
-
-    await returnEquipmentStock(session.equipment_name);
-
-    setStatusConfig({
-      visible: true,
-      title: "Session Cancelled",
-      message: "The equipment log has been successfully cancelled.",
-    });
-
-    fetchActiveSessions();
-    fetchInventory();
-    setIsStoppingSession(false);
   };
 
   const returnEquipmentStock = async (equipmentName: string) => {
