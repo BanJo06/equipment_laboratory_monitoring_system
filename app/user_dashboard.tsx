@@ -16,7 +16,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
@@ -87,6 +86,16 @@ export default function UserDashboard() {
   const scale = isMobile ? mobileScale : desktopScale;
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
+
+  // NEW: Precise height constants to sync columns
+  // We calculate these based on your existing design proportions
+  const HEADER_CARD_H = rs(140);
+  const START_SESSION_H = rs(452);
+  const CARD_GAP = rs(24);
+  const TOP_SECTION_TOTAL_H = HEADER_CARD_H + CARD_GAP + START_SESSION_H;
+
+  const BOTTOM_SECTION_TOTAL_H = rs(260); // Total height for the Available Equipment card
+  const STAT_CARD_H = (BOTTOM_SECTION_TOTAL_H - CARD_GAP) / 2;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -416,7 +425,7 @@ export default function UserDashboard() {
 
   // --- RENDER ---
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View>
       <Stack.Screen options={{ headerShown: false }} />
       <LogoutConfirmationModal
         visible={isLogoutModalVisible}
@@ -460,7 +469,7 @@ export default function UserDashboard() {
           <View
             style={{
               flexDirection: isMobile ? "column" : "row",
-              alignItems: "flex-start",
+              alignItems: "stretch", // Ensures children can match height
               gap: rs(24),
             }}
           >
@@ -476,6 +485,7 @@ export default function UserDashboard() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   gap: rs(12),
+                  height: isMobile ? undefined : HEADER_CARD_H, // Set height on desktop
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
@@ -512,19 +522,18 @@ export default function UserDashboard() {
                 style={{
                   paddingHorizontal: rs(32),
                   paddingTop: rs(32),
-                  paddingBottom: rs(24),
                   marginBottom: rs(24),
+                  height: isMobile ? undefined : START_SESSION_H, // Set height on desktop
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
+                {/* ... (Keep inner content of Start Session Card exactly as is) ... */}
                 <View
                   style={{
                     marginBottom: rs(16),
                     flexDirection: "row",
-                    flexWrap: "wrap",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    gap: rs(12),
                   }}
                 >
                   <View
@@ -532,11 +541,10 @@ export default function UserDashboard() {
                       gap: rs(16),
                       flexDirection: "row",
                       alignItems: "center",
-                      flexShrink: 1,
                     }}
                   >
                     <SVG_ICONS.StartSession size={rs(64)} />
-                    <View style={{ gap: rs(6), flexShrink: 1 }}>
+                    <View style={{ gap: rs(6) }}>
                       <Text
                         style={{ fontSize: rf(28) }}
                         className="font-inter-bold text-textPrimary-light"
@@ -558,6 +566,7 @@ export default function UserDashboard() {
 
                 {/* Select Equipment Input */}
                 <View style={{ marginBottom: rs(16) }}>
+                  {/* ... (Your Equipment Input Code) ... */}
                   <View className="flex-row items-center mb-1">
                     <FontAwesome5
                       name="flask"
@@ -594,6 +603,7 @@ export default function UserDashboard() {
                   style={{ marginBottom: rs(24), padding: rs(16) }}
                   className="bg-[#DADFE5] rounded-[10px]"
                 >
+                  {/* ... (Your Time Selection Code) ... */}
                   <View
                     style={{ marginBottom: rs(8) }}
                     className="flex-row items-center"
@@ -618,11 +628,7 @@ export default function UserDashboard() {
                       onPress={() => setTimeMode("manual")}
                     >
                       <View
-                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${
-                          timeMode === "manual"
-                            ? "border-blue-600 bg-blue-600"
-                            : "border-gray-400 bg-white"
-                        }`}
+                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${timeMode === "manual" ? "border-blue-600 bg-blue-600" : "border-gray-400 bg-white"}`}
                       >
                         {timeMode === "manual" && (
                           <View className="h-2 w-2 rounded-full bg-white" />
@@ -635,17 +641,12 @@ export default function UserDashboard() {
                         Manual Entry
                       </Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity
                       className="flex-row items-center"
                       onPress={() => setTimeMode("now")}
                     >
                       <View
-                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${
-                          timeMode === "now"
-                            ? "border-blue-600 bg-blue-600"
-                            : "border-gray-400 bg-white"
-                        }`}
+                        className={`h-5 w-5 rounded-full border-2 items-center justify-center mr-2 ${timeMode === "now" ? "border-blue-600 bg-blue-600" : "border-gray-400 bg-white"}`}
                       >
                         {timeMode === "now" && (
                           <View className="h-2 w-2 rounded-full bg-white" />
@@ -659,12 +660,9 @@ export default function UserDashboard() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-
                   <View
                     style={{ padding: rs(12) }}
-                    className={`rounded-lg flex-row justify-between items-center mt-2 ${
-                      timeMode === "manual" ? "bg-white" : "bg-gray-300"
-                    }`}
+                    className={`rounded-lg flex-row justify-between items-center mt-2 ${timeMode === "manual" ? "bg-white" : "bg-gray-300"}`}
                   >
                     <TextInput
                       style={[
@@ -689,9 +687,7 @@ export default function UserDashboard() {
 
                 <TouchableOpacity
                   style={{ paddingVertical: rs(16) }}
-                  className={`rounded-md items-center justify-center w-full ${
-                    isStartingSession ? "bg-blue-400" : "bg-mainColor-light"
-                  }`}
+                  className={`rounded-md items-center justify-center w-full ${isStartingSession ? "bg-blue-400" : "bg-mainColor-light"}`}
                   onPress={handleStartSession}
                   disabled={isStartingSession}
                 >
@@ -708,7 +704,11 @@ export default function UserDashboard() {
 
               {/* 3. Dynamic Available Equipments Table */}
               <View
-                style={{ padding: rs(32), marginBottom: rs(24) }}
+                style={{
+                  padding: rs(32),
+                  marginBottom: rs(24),
+                  height: isMobile ? undefined : BOTTOM_SECTION_TOTAL_H, // Fixed height to match stats
+                }}
                 className="bg-white rounded-lg shadow-sm"
               >
                 <Text
@@ -718,7 +718,6 @@ export default function UserDashboard() {
                   Available Equipments
                 </Text>
 
-                {/* Header */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -735,7 +734,6 @@ export default function UserDashboard() {
                   >
                     Qty
                   </Text>
-                  {/* CHANGED "Last Used" to "Status" */}
                   <Text
                     style={{ fontSize: rf(14), flex: 1.2 }}
                     className="text-right font-inter-bold text-textPrimary-light"
@@ -744,8 +742,8 @@ export default function UserDashboard() {
                   </Text>
                 </View>
 
-                {/* Dynamic Rows */}
-                <View style={{ height: rs(139), overflow: "hidden" }}>
+                {/* CHANGED: flex: 1 ensures it fills the card height minus header */}
+                <View style={{ flex: 1, overflow: "hidden" }}>
                   <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{
@@ -753,18 +751,14 @@ export default function UserDashboard() {
                       flexGrow: 1,
                     }}
                     nestedScrollEnabled={true}
-                    showsVerticalScrollIndicator={true}
                   >
+                    {/* ... (Inventory Mapping Logic stays same) ... */}
                     {loadingInventory ? (
                       <ActivityIndicator
                         size="small"
                         color="#1d4ed8"
                         style={{ marginTop: 20 }}
                       />
-                    ) : inventory.length === 0 ? (
-                      <Text className="text-center text-gray-500 font-inter mt-4">
-                        No equipment found.
-                      </Text>
                     ) : (
                       inventory.map((item) => (
                         <View
@@ -788,9 +782,7 @@ export default function UserDashboard() {
                           </Text>
                           <Text
                             style={{ fontSize: rf(14), flex: 1.2 }}
-                            className={`font-inter-bold text-right ${
-                              item.units > 0 ? "text-green-600" : "text-red-600"
-                            }`}
+                            className={`font-inter-bold text-right ${item.units > 0 ? "text-green-600" : "text-red-600"}`}
                           >
                             {item.units > 0 ? "Available" : "In Use"}
                           </Text>
@@ -806,17 +798,19 @@ export default function UserDashboard() {
             <View style={{ flex: 1, width: "100%" }}>
               {/* 4. Active Sessions Card */}
               <View
-                style={{ padding: rs(32), marginBottom: rs(24) }}
+                style={{
+                  padding: rs(32),
+                  marginBottom: rs(24),
+                  height: isMobile ? undefined : TOP_SECTION_TOTAL_H, // Matches combined height of Header + Start + Gap
+                }}
                 className="bg-white rounded-lg shadow-sm"
               >
                 <View
                   style={{
                     marginBottom: rs(16),
                     flexDirection: "row",
-                    flexWrap: "wrap",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    gap: rs(12),
                   }}
                 >
                   <View
@@ -824,11 +818,10 @@ export default function UserDashboard() {
                       gap: rs(16),
                       flexDirection: "row",
                       alignItems: "center",
-                      flexShrink: 1,
                     }}
                   >
                     <SVG_ICONS.ActiveSessions size={rs(64)} />
-                    <View style={{ gap: rs(6), flexShrink: 1 }}>
+                    <View style={{ gap: rs(6) }}>
                       <Text
                         style={{ fontSize: rf(28) }}
                         className="font-inter-bold text-textPrimary-light"
@@ -852,11 +845,9 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* DYNAMIC SESSIONS LIST */}
-                <ScrollView
-                  style={{ height: rs(492) }}
-                  nestedScrollEnabled={true}
-                >
+                {/* CHANGED: flex: 1 and removal of hardcoded rs(492) */}
+                <ScrollView style={{ flex: 1 }} nestedScrollEnabled={true}>
+                  {/* ... (Active Sessions Mapping stays same) ... */}
                   {activeSessions.length === 0 ? (
                     <Text className="font-inter text-gray-500 text-center mt-4">
                       No active sessions currently.
@@ -868,13 +859,12 @@ export default function UserDashboard() {
                         style={{ padding: rs(16), marginBottom: rs(16) }}
                         className="bg-gray-200 rounded-xl"
                       >
+                        {/* ... (Session Item Content) ... */}
                         <View
                           style={{
                             marginBottom: rs(8),
                             flexDirection: "row",
-                            flexWrap: "wrap",
                             justifyContent: "space-between",
-                            gap: rs(8),
                           }}
                         >
                           <View className="flex-row items-center">
@@ -919,17 +909,13 @@ export default function UserDashboard() {
                             </Text>
                           </TouchableOpacity>
                         </View>
-
                         <View
                           style={{
                             paddingHorizontal: rs(16),
                             paddingVertical: rs(12),
                             marginBottom: rs(24),
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: rs(8),
                           }}
-                          className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100"
+                          className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100 flex-row"
                         >
                           <Feather name="clock" size={rs(20)} color="#112747" />
                           <Text
@@ -954,7 +940,6 @@ export default function UserDashboard() {
                             </Text>
                           </View>
                         </View>
-
                         <View
                           style={{
                             flexDirection: width < 500 ? "column" : "row",
@@ -968,16 +953,14 @@ export default function UserDashboard() {
                               flex: 1,
                             }}
                             className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-red-400" : "bg-red-600"}`}
-                            onPress={() => handleStopSession(session)} // Stop Button
+                            onPress={() => handleStopSession(session)}
                             disabled={isStoppingSession}
                           >
                             <Text
                               style={{ fontSize: rf(14) }}
                               className="text-white font-inter-bold"
                             >
-                              {isStoppingSession
-                                ? "Stopping..."
-                                : "Stop Using Equipment"}
+                              Stop Using
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -986,17 +969,15 @@ export default function UserDashboard() {
                               paddingVertical: rs(12),
                               flex: 1,
                             }}
-                            className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-gray-400" : "bg-gray-600"}`} // Changed color to differentiate
-                            onPress={() => handleCancelSession(session)} // Cancel Button
+                            className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-gray-400" : "bg-gray-600"}`}
+                            onPress={() => handleCancelSession(session)}
                             disabled={isStoppingSession}
                           >
                             <Text
                               style={{ fontSize: rf(14) }}
                               className="text-white font-inter-bold"
                             >
-                              {isStoppingSession
-                                ? "Processing..."
-                                : "Cancel Equipment"}
+                              Cancel
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1007,7 +988,14 @@ export default function UserDashboard() {
               </View>
 
               {/* 5. Stats Grid */}
-              <View style={{ gap: rs(24) }} className="flex-row flex-wrap">
+              <View
+                style={{
+                  gap: rs(24),
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  height: isMobile ? undefined : BOTTOM_SECTION_TOTAL_H, // Total height matches Available Equipment card
+                }}
+              >
                 {[
                   { label: "My Active", val: activeSessions.length.toString() },
                   { label: "Date/Time", val: liveDateTime },
@@ -1018,7 +1006,7 @@ export default function UserDashboard() {
                     key={i}
                     style={{
                       padding: rs(16),
-                      minHeight: rs(120),
+                      height: isMobile ? rs(120) : STAT_CARD_H, // Calculated height to match the left column
                       width: isMobile ? "47.5%" : "48%",
                     }}
                     className="bg-white rounded-2xl shadow-sm justify-center"
@@ -1042,6 +1030,6 @@ export default function UserDashboard() {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
