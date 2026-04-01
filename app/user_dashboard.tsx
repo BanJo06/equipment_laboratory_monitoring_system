@@ -2,7 +2,6 @@ import { SVG_ICONS } from "@/assets/constants/icons";
 import {
   Feather,
   FontAwesome5,
-  Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -16,6 +15,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
@@ -87,15 +87,18 @@ export default function UserDashboard() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
-  // NEW: Precise height constants to sync columns
-  // We calculate these based on your existing design proportions
-  const HEADER_CARD_H = rs(140);
+  // --- HEIGHT & SPACING CONSTANTS ---
+  const CARD_MARGIN = rs(24);
+  const HEADER_H = rs(140);
   const START_SESSION_H = rs(452);
-  const CARD_GAP = rs(24);
-  const TOP_SECTION_TOTAL_H = HEADER_CARD_H + CARD_GAP + START_SESSION_H;
 
-  const BOTTOM_SECTION_TOTAL_H = rs(260); // Total height for the Available Equipment card
-  const STAT_CARD_H = (BOTTOM_SECTION_TOTAL_H - CARD_GAP) / 2;
+  // Desktop specific sync
+  const TOP_SECTION_TOTAL_H = HEADER_H + CARD_MARGIN + START_SESSION_H;
+  const DESKTOP_INVENTORY_H = rs(260);
+  const STAT_CARD_H = (DESKTOP_INVENTORY_H - CARD_MARGIN) / 2;
+
+  // Internal Scroll Area Height
+  const TABLE_SCROLL_H = isMobile ? rs(200) : rs(140);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -425,7 +428,7 @@ export default function UserDashboard() {
 
   // --- RENDER ---
   return (
-    <View>
+    <SafeAreaView style={{ flex: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
       <LogoutConfirmationModal
         visible={isLogoutModalVisible}
@@ -469,23 +472,22 @@ export default function UserDashboard() {
           <View
             style={{
               flexDirection: isMobile ? "column" : "row",
-              alignItems: "stretch", // Ensures children can match height
-              gap: rs(24),
+              alignItems: isMobile ? "flex-start" : "stretch",
+              gap: CARD_MARGIN,
+              width: "100%",
             }}
           >
             {/* ======================= LEFT COLUMN ======================= */}
-            <View style={{ flex: 1, width: "100%" }}>
+            <View style={{ flex: isMobile ? undefined : 1, width: "100%" }}>
               {/* 1. Header Card */}
               <View
                 style={{
                   padding: rs(32),
-                  marginBottom: rs(24),
+                  marginBottom: CARD_MARGIN,
                   flexDirection: "row",
-                  flexWrap: "wrap",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  gap: rs(12),
-                  height: isMobile ? undefined : HEADER_CARD_H, // Set height on desktop
+                  height: isMobile ? undefined : HEADER_H,
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
@@ -520,14 +522,13 @@ export default function UserDashboard() {
               {/* 2. Start Session Card */}
               <View
                 style={{
-                  paddingHorizontal: rs(32),
-                  paddingTop: rs(32),
-                  marginBottom: rs(24),
-                  height: isMobile ? undefined : START_SESSION_H, // Set height on desktop
+                  padding: rs(32),
+                  marginBottom: CARD_MARGIN,
+                  height: isMobile ? undefined : START_SESSION_H,
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
-                {/* ... (Keep inner content of Start Session Card exactly as is) ... */}
+                {/* Header Section */}
                 <View
                   style={{
                     marginBottom: rs(16),
@@ -564,9 +565,8 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Select Equipment Input */}
+                {/* Select Equipment */}
                 <View style={{ marginBottom: rs(16) }}>
-                  {/* ... (Your Equipment Input Code) ... */}
                   <View className="flex-row items-center mb-1">
                     <FontAwesome5
                       name="flask"
@@ -598,12 +598,11 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Start Time Container */}
+                {/* Start Time */}
                 <View
                   style={{ marginBottom: rs(24), padding: rs(16) }}
                   className="bg-[#DADFE5] rounded-[10px]"
                 >
-                  {/* ... (Your Time Selection Code) ... */}
                   <View
                     style={{ marginBottom: rs(8) }}
                     className="flex-row items-center"
@@ -671,17 +670,12 @@ export default function UserDashboard() {
                       ]}
                       className="text-textPrimary-light font-inter"
                       placeholder={
-                        timeMode === "now"
-                          ? "Current time will be recorded"
-                          : "e.g., 11:45 AM"
+                        timeMode === "now" ? "Current time" : "e.g., 11:45 AM"
                       }
                       value={timeMode === "now" ? "" : manualTime}
                       onChangeText={setManualTime}
                       editable={timeMode === "manual"}
                     />
-                    {timeMode === "manual" && (
-                      <Feather name="edit-2" size={rs(16)} color="gray" />
-                    )}
                   </View>
                 </View>
 
@@ -695,19 +689,18 @@ export default function UserDashboard() {
                     style={{ fontSize: rf(18) }}
                     className="text-white font-inter-bold"
                   >
-                    {isStartingSession
-                      ? "Starting..."
-                      : "Start Using Equipment"}
+                    Start Using Equipment
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Dynamic Available Equipments Table */}
+              {/* 3. Available Equipments Card */}
               <View
                 style={{
                   padding: rs(32),
-                  marginBottom: rs(24),
-                  height: isMobile ? undefined : BOTTOM_SECTION_TOTAL_H, // Fixed height to match stats
+                  marginBottom: CARD_MARGIN,
+                  height: isMobile ? undefined : DESKTOP_INVENTORY_H,
+                  minHeight: isMobile ? rs(180) : undefined,
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
@@ -718,41 +711,37 @@ export default function UserDashboard() {
                   Available Equipments
                 </Text>
 
+                {/* Table Header */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
                 >
                   <Text
-                    style={{ fontSize: rf(14), flex: 2 }}
+                    style={{ fontSize: rf(14), flex: 1.8 }}
                     className="font-inter-bold text-textPrimary-light"
                   >
                     Item
                   </Text>
                   <Text
-                    style={{ fontSize: rf(14), flex: 0.5 }}
+                    style={{ fontSize: rf(14), flex: 0.6 }}
                     className="text-center font-inter-bold text-textPrimary-light"
                   >
                     Qty
                   </Text>
                   <Text
-                    style={{ fontSize: rf(14), flex: 1.2 }}
+                    style={{ fontSize: rf(14), flex: 1 }}
                     className="text-right font-inter-bold text-textPrimary-light"
                   >
                     Status
                   </Text>
                 </View>
 
-                {/* CHANGED: flex: 1 ensures it fills the card height minus header */}
-                <View style={{ flex: 1, overflow: "hidden" }}>
+                {/* Scrollable list Area */}
+                <View style={{ height: TABLE_SCROLL_H, overflow: "hidden" }}>
                   <ScrollView
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{
-                      paddingBottom: rs(16),
-                      flexGrow: 1,
-                    }}
                     nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
                   >
-                    {/* ... (Inventory Mapping Logic stays same) ... */}
                     {loadingInventory ? (
                       <ActivityIndicator
                         size="small"
@@ -763,11 +752,11 @@ export default function UserDashboard() {
                       inventory.map((item) => (
                         <View
                           key={item.id}
-                          style={{ paddingVertical: rs(8) }}
+                          style={{ paddingVertical: rs(12) }}
                           className="flex-row items-center border-b border-[#DADFE5]"
                         >
                           <Text
-                            style={{ fontSize: rf(14), flex: 2 }}
+                            style={{ fontSize: rf(14), flex: 1.8 }}
                             className="font-inter text-textPrimary-light pr-2"
                             numberOfLines={2}
                           >
@@ -775,13 +764,13 @@ export default function UserDashboard() {
                             {item.model_name ? `- ${item.model_name}` : ""}
                           </Text>
                           <Text
-                            style={{ fontSize: rf(14), flex: 0.5 }}
+                            style={{ fontSize: rf(14), flex: 0.6 }}
                             className="font-inter text-center text-textPrimary-light"
                           >
                             {item.units}
                           </Text>
                           <Text
-                            style={{ fontSize: rf(14), flex: 1.2 }}
+                            style={{ fontSize: rf(14), flex: 1 }}
                             className={`font-inter-bold text-right ${item.units > 0 ? "text-green-600" : "text-red-600"}`}
                           >
                             {item.units > 0 ? "Available" : "In Use"}
@@ -795,13 +784,13 @@ export default function UserDashboard() {
             </View>
 
             {/* ======================= RIGHT COLUMN ======================= */}
-            <View style={{ flex: 1, width: "100%" }}>
+            <View style={{ flex: isMobile ? undefined : 1, width: "100%" }}>
               {/* 4. Active Sessions Card */}
               <View
                 style={{
                   padding: rs(32),
-                  marginBottom: rs(24),
-                  height: isMobile ? undefined : TOP_SECTION_TOTAL_H, // Matches combined height of Header + Start + Gap
+                  marginBottom: CARD_MARGIN, // Explicitly separate from the Grid below
+                  height: isMobile ? undefined : TOP_SECTION_TOTAL_H,
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
@@ -832,11 +821,7 @@ export default function UserDashboard() {
                         style={{ fontSize: rf(16) }}
                         className="font-inter text-textSecondary-light"
                       >
-                        {activeSessions.length}{" "}
-                        {activeSessions.length === 1
-                          ? "equipment"
-                          : "equipments"}{" "}
-                        in use
+                        {activeSessions.length} equipments in use
                       </Text>
                     </View>
                   </View>
@@ -845,9 +830,10 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* CHANGED: flex: 1 and removal of hardcoded rs(492) */}
-                <ScrollView style={{ flex: 1 }} nestedScrollEnabled={true}>
-                  {/* ... (Active Sessions Mapping stays same) ... */}
+                <ScrollView
+                  style={isMobile ? { maxHeight: rs(400) } : { flex: 1 }}
+                  nestedScrollEnabled={true}
+                >
                   {activeSessions.length === 0 ? (
                     <Text className="font-inter text-gray-500 text-center mt-4">
                       No active sessions currently.
@@ -856,10 +842,9 @@ export default function UserDashboard() {
                     activeSessions.map((session) => (
                       <View
                         key={session.id}
-                        style={{ padding: rs(16), marginBottom: rs(16) }}
+                        style={{ padding: rs(12), marginBottom: rs(12) }}
                         className="bg-gray-200 rounded-xl"
                       >
-                        {/* ... (Session Item Content) ... */}
                         <View
                           style={{
                             marginBottom: rs(8),
@@ -877,123 +862,42 @@ export default function UserDashboard() {
                               style={{ fontSize: rf(16) }}
                               className="font-inter text-textPrimary-light ml-2 font-bold"
                             >
-                              {session.equipment_name} - {session.model_name}
+                              {session.equipment_name}
                             </Text>
                           </View>
-                          <TouchableOpacity
-                            style={{
-                              paddingVertical: rs(6),
-                              paddingHorizontal: rs(12),
-                            }}
-                            className="border border-blue-700 rounded-lg flex-row items-center"
-                            onPress={() => {
-                              setQrSessionData({
-                                id: session.id,
-                                equipment_name: session.equipment_name,
-                                model_name: session.model_name,
-                                location: session.location,
-                              });
-                              setQrModalVisible(true);
-                            }}
-                          >
-                            <Ionicons
-                              name="qr-code-outline"
-                              size={rs(16)}
-                              color="#1d4ed8"
-                            />
-                            <Text
-                              style={{ fontSize: rf(14) }}
-                              className="text-blue-700 font-inter-bold ml-2"
-                            >
-                              QR
-                            </Text>
-                          </TouchableOpacity>
                         </View>
                         <View
-                          style={{
-                            paddingHorizontal: rs(16),
-                            paddingVertical: rs(12),
-                            marginBottom: rs(24),
-                          }}
-                          className="bg-white items-center rounded-xl self-start shadow-sm border border-gray-100 flex-row"
+                          style={{ padding: rs(12), marginBottom: rs(16) }}
+                          className="bg-white items-center rounded-xl self-start flex-row"
                         >
                           <Feather name="clock" size={rs(20)} color="#112747" />
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="text-textPrimary-light font-inter ml-2"
-                          >
+                          <Text style={{ fontSize: rf(14) }} className="ml-2">
                             Started: {session.time_in}
                           </Text>
-                          <View
-                            style={{
-                              paddingHorizontal: rs(12),
-                              paddingVertical: rs(4),
-                              marginLeft: rs(8),
-                            }}
-                            className="bg-[#DADFE5] rounded-[4px]"
-                          >
-                            <Text
-                              style={{ fontSize: rf(14) }}
-                              className="text-blue-700 font-inter-bold"
-                            >
-                              {getDuration(session.created_at)}
-                            </Text>
-                          </View>
                         </View>
-                        <View
-                          style={{
-                            flexDirection: width < 500 ? "column" : "row",
-                            gap: rs(16),
-                          }}
+                        <TouchableOpacity
+                          style={{ padding: rs(12) }}
+                          className="bg-red-600 rounded-md items-center"
+                          onPress={() => handleStopSession(session)}
                         >
-                          <TouchableOpacity
-                            style={{
-                              paddingHorizontal: rs(24),
-                              paddingVertical: rs(12),
-                              flex: 1,
-                            }}
-                            className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-red-400" : "bg-red-600"}`}
-                            onPress={() => handleStopSession(session)}
-                            disabled={isStoppingSession}
-                          >
-                            <Text
-                              style={{ fontSize: rf(14) }}
-                              className="text-white font-inter-bold"
-                            >
-                              Stop Using
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={{
-                              paddingHorizontal: rs(24),
-                              paddingVertical: rs(12),
-                              flex: 1,
-                            }}
-                            className={`rounded-md items-center justify-center ${isStoppingSession ? "bg-gray-400" : "bg-gray-600"}`}
-                            onPress={() => handleCancelSession(session)}
-                            disabled={isStoppingSession}
-                          >
-                            <Text
-                              style={{ fontSize: rf(14) }}
-                              className="text-white font-inter-bold"
-                            >
-                              Cancel
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                          <Text className="text-white font-inter-bold">
+                            Stop Using
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     ))
                   )}
                 </ScrollView>
               </View>
 
-              {/* 5. Stats Grid */}
+              {/* 5. Stats Grid (2x2 Layout) */}
               <View
                 style={{
-                  gap: rs(24),
                   flexDirection: "row",
                   flexWrap: "wrap",
-                  height: isMobile ? undefined : BOTTOM_SECTION_TOTAL_H, // Total height matches Available Equipment card
+                  justifyContent: "space-between",
+                  rowGap: isMobile ? rs(12) : CARD_MARGIN,
+                  height: isMobile ? undefined : DESKTOP_INVENTORY_H,
                 }}
               >
                 {[
@@ -1006,20 +910,21 @@ export default function UserDashboard() {
                     key={i}
                     style={{
                       padding: rs(16),
-                      height: isMobile ? rs(120) : STAT_CARD_H, // Calculated height to match the left column
-                      width: isMobile ? "47.5%" : "48%",
+                      height: isMobile ? rs(100) : STAT_CARD_H,
+                      width: "48.5%",
                     }}
                     className="bg-white rounded-2xl shadow-sm justify-center"
                   >
                     <Text
-                      style={{ fontSize: rf(20) }}
+                      style={{ fontSize: rf(18) }}
                       className="font-inter-bold text-textPrimary-light"
                     >
                       {stat.label}
                     </Text>
                     <Text
-                      style={{ fontSize: rf(16) }}
+                      style={{ fontSize: rf(14) }}
                       className="font-inter text-textSecondary-light mt-2"
+                      numberOfLines={2}
                     >
                       {stat.val}
                     </Text>
@@ -1030,6 +935,6 @@ export default function UserDashboard() {
           </View>
         </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
