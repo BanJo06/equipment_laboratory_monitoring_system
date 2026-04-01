@@ -98,7 +98,7 @@ export default function UserDashboard() {
   const STAT_CARD_H = (DESKTOP_INVENTORY_H - CARD_MARGIN) / 2;
 
   // Internal Scroll Area Height
-  const TABLE_SCROLL_H = isMobile ? rs(200) : rs(140);
+  const TABLE_SCROLL_H = isMobile ? rs(200) : rs(120);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -186,6 +186,29 @@ export default function UserDashboard() {
   };
 
   const handleStartSession = async () => {
+    if (timeMode === "manual") {
+      const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(am|pm|AM|PM)$/;
+
+      if (!manualTime.trim()) {
+        setStatusConfig({
+          visible: true,
+          title: "Error",
+          message: "Please enter a manual time.",
+        });
+        return;
+      }
+
+      if (!timeRegex.test(manualTime.trim())) {
+        setStatusConfig({
+          visible: true,
+          title: "Invalid Format",
+          message:
+            "Please enter time in a valid format (e.g., 5:00 AM, 5:00am, or 05:00 PM).",
+        });
+        return;
+      }
+    }
+
     if (!selectedEquipment) {
       setStatusConfig({
         visible: true,
@@ -467,7 +490,10 @@ export default function UserDashboard() {
       <View className="flex-1 bg-bgPrimary-light">
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: rs(24) }}
+          contentContainerStyle={{
+            paddingHorizontal: rs(24),
+            paddingTop: rs(24),
+          }}
         >
           <View
             style={{
