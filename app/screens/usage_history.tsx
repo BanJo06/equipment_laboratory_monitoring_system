@@ -2,7 +2,6 @@ import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
-import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -21,6 +20,7 @@ import ErrorDeleteModal from "../components/dialogs/ErrorDeleteModal";
 import ExportRangeModal from "../components/dialogs/ExportRangeModal";
 import StatusModal from "../components/dialogs/StatusModal";
 import UsageHistoryHelpModal from "../components/dialogs/UsageHistoryHelpModal";
+import { downloadPDF } from "../utils/pdfExporter";
 
 interface EquipmentLog {
   id: string;
@@ -288,52 +288,45 @@ export default function UsageHistory() {
     try {
       setLoading(true);
 
-      // 1. SAFE LOCAL DATE FORMATTING (Avoids the 1-day-off bug)
-      const formatDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+      // Safe formatting for Philippines Time (YYYY-MM-DD)
+      const toLocalISO = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
       };
 
-      const from = formatDate(dateFrom);
-      const to = formatDate(dateTo);
+      const fromStr = toLocalISO(dateFrom);
+      const toStr = toLocalISO(dateTo);
 
-      console.log("Exporting range:", from, "to", to);
-
-      // 2. Fetch data
       const { data, error } = await supabase
         .from("equipment_logs")
         .select("*")
-        .gte("date", from) // Greater than or equal to start date
-        .lte("date", to) // Less than or equal to end date
-        .order("date", { ascending: true })
-        .order("time_in", { ascending: true });
+        .gte("date", fromStr)
+        .lte("date", toStr)
+        .order("date", { ascending: true });
 
       if (error) throw error;
 
-      // 3. CHECK IF DATA EXISTS
       if (!data || data.length === 0) {
-        alert(`No logs found between ${from} and ${to}.`);
-        setExportModalVisible(false);
+        alert(`No records found for the range ${fromStr} to ${toStr}`);
         return;
       }
 
-      // 4. Proceed with export
+      // Trigger the correct export
       if (exportType === "excel") {
         await generateExcel(data);
       } else {
         await generatePDF(data);
       }
-    } catch (error) {
-      console.error("Export Error:", error);
-      alert("Failed to export data. Check console for details.");
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred during export.");
     } finally {
       setLoading(false);
       setExportModalVisible(false);
     }
   };
-
   const generateExcel = async (data: EquipmentLog[]) => {
     // Create a local reference cast to 'any' to bypass the TS errors
     const FS: any = FileSystem;
@@ -386,46 +379,13 @@ export default function UsageHistory() {
   };
 
   const generatePDF = async (data: EquipmentLog[]) => {
-    const htmlContent = `
-    <html>
-      <body style="font-family: sans-serif; padding: 20px;">
-        <h2 style="text-align: center;">Equipment Usage Report</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-          <thead>
-            <tr style="background-color: #f2f2f2;">
-              <th style="border: 1px solid #ddd; padding: 8px;">User</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Equipment</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Date</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data
-              .map(
-                (log) => `
-              <tr>
-                <td style="border: 1px solid #ddd; padding: 8px;">${log.full_name}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${log.equipment_name}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${log.date}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${log.status}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </body>
-    </html>
-  `;
-
-    if (Platform.OS === "web") {
-      // --- PC / WEB VERSION ---
-      // This opens the browser's Print/Save dialog
-      await Print.printAsync({ html: htmlContent });
-    } else {
-      // --- MOBILE VERSION ---
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri);
+    try {
+      // This line replaces all the HTML and jsPDF logic you had before
+      // It automatically detects if you are on Web or Mobile
+      await downloadPDF(data, formatName);
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      alert("Failed to generate PDF. Please try again.");
     }
   };
 
