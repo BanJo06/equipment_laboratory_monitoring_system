@@ -1,6 +1,9 @@
 import { SVG_ICONS } from "@/assets/constants/icons";
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,9 +13,11 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import * as XLSX from "xlsx-js-style";
 import DatePickerModal from "../components/dialogs/DatePickerModal";
 import DeleteLogsModal from "../components/dialogs/DeleteLogsModal";
 import ErrorDeleteModal from "../components/dialogs/ErrorDeleteModal";
+import ExportRangeModal from "../components/dialogs/ExportRangeModal";
 import StatusModal from "../components/dialogs/StatusModal";
 import UsageHistoryHelpModal from "../components/dialogs/UsageHistoryHelpModal";
 
@@ -61,6 +66,10 @@ export default function UsageHistory() {
     title: "",
     message: "",
   });
+
+  // ---STATE FOR EXPORT ---
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportType, setExportType] = useState<"excel" | "pdf">("excel");
 
   const closeStatusModal = () => {
     setStatusConfig((prev) => ({ ...prev, visible: false }));
@@ -273,6 +282,138 @@ export default function UsageHistory() {
     }
   };
 
+  // --- EXPORT LOGIC ---
+  const handleExportData = async (dateFrom: Date, dateTo: Date) => {
+    try {
+      setLoading(true);
+
+      // 1. Format dates for Supabase query (YYYY-MM-DD)
+      const from = dateFrom.toISOString().split("T")[0];
+      const to = dateTo.toISOString().split("T")[0];
+
+      // 2. Fetch data specifically for the range
+      const { data, error } = await supabase
+        .from("equipment_logs")
+        .select("*")
+        .gte("date", from)
+        .lte("date", to)
+        .order("created_at", { ascending: true });
+
+      if (error || !data) throw new Error("Failed to fetch data for export");
+
+      if (exportType === "excel") {
+        await generateExcel(data);
+      } else {
+        await generatePDF(data);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Export failed");
+    } finally {
+      setLoading(false);
+      setExportModalVisible(false);
+    }
+  };
+
+  const generateExcel = async (data: EquipmentLog[]) => {
+    // 1. Prepare the Header and Rows
+    const header = [
+      "User",
+      "Equipment",
+      "Model",
+      "Date",
+      "Time In",
+      "Time Out",
+      "Duration",
+      "Status",
+    ];
+    const rows = data.map((log) => [
+      formatName(log.full_name),
+      log.equipment_name,
+      log.model_name || "N/A",
+      log.date,
+      log.time_in,
+      log.time_out || "N/A",
+      log.duration || "In Use",
+      log.status,
+    ]);
+
+    // 2. Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+
+    // 3. Add styling to the Header (Row 1)
+    const range = XLSX.utils.decode_range(ws["!ref"]!!);
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const address = XLSX.utils.encode_col(C) + "1"; // Targeting the first row
+      if (!ws[address]) continue;
+      ws[address].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "4F81BD" } }, // Nice blue background
+        alignment: { horizontal: "center" },
+      };
+    }
+
+    // 4. Create workbook and save
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Usage Logs");
+
+    const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+    const FS = FileSystem as any;
+
+    const fileName = `Usage_History_${Date.now()}.xlsx`;
+    const uri = (FS.cacheDirectory || FS.documentDirectory) + fileName;
+
+    try {
+      // Calling the function directly from the casted object
+      await FS.writeAsStringAsync(uri, base64, {
+        encoding: FS.EncodingType?.Base64 || "base64",
+      });
+
+      await Sharing.shareAsync(uri);
+    } catch (error) {
+      console.error("Export Error:", error);
+    }
+  };
+
+  const generatePDF = async (data: EquipmentLog[]) => {
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
+            th { background-color: #f2f2f2; }
+            h2 { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <h2>Usage History Report</h2>
+          <table>
+            <tr>
+              <th>User</th><th>Equipment</th><th>Date</th><th>In</th><th>Out</th><th>Status</th>
+            </tr>
+            ${data
+              .map(
+                (log) => `
+              <tr>
+                <td>${log.full_name}</td>
+                <td>${log.equipment_name}</td>
+                <td>${log.date}</td>
+                <td>${log.time_in}</td>
+                <td>${log.time_out || "-"}</td>
+                <td>${log.status}</td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </table>
+        </body>
+      </html>
+    `;
+    const { uri } = await Print.printToFileAsync({ html: htmlContent });
+    await Sharing.shareAsync(uri);
+  };
+
   return (
     <View
       style={{
@@ -314,6 +455,13 @@ export default function UsageHistory() {
         onClose={closeStatusModal}
       />
 
+      <ExportRangeModal
+        visible={exportModalVisible}
+        type={exportType}
+        onClose={() => setExportModalVisible(false)}
+        onConfirm={handleExportData}
+      />
+
       <View
         style={{
           marginBottom: rs(16),
@@ -352,6 +500,7 @@ export default function UsageHistory() {
       </View>
 
       <View className="flex-row justify-end mb-4 gap-2">
+        {/* --- EXISTING CLEAR FILTER --- */}
         {selectedDate && (
           <TouchableOpacity
             style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
@@ -367,6 +516,7 @@ export default function UsageHistory() {
           </TouchableOpacity>
         )}
 
+        {/* --- EXISTING SELECT DATE --- */}
         <TouchableOpacity
           style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
           className="bg-mainColor-light rounded-md"
@@ -380,6 +530,53 @@ export default function UsageHistory() {
           </Text>
         </TouchableOpacity>
 
+        {/* --- NEW EXCEL BUTTON --- */}
+        <TouchableOpacity
+          style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+          className="bg-green-600 rounded-md flex-row items-center"
+          onPress={() => {
+            setExportType("excel");
+            setExportModalVisible(true);
+          }}
+        >
+          <Feather
+            name="file-text"
+            size={rs(18)}
+            color="white"
+            style={{ marginRight: rs(6) }}
+          />
+          <Text
+            style={{ fontSize: rf(16) }}
+            className="text-white font-inter-bold"
+          >
+            Excel
+          </Text>
+        </TouchableOpacity>
+
+        {/* --- NEW PDF BUTTON --- */}
+        <TouchableOpacity
+          style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+          className="bg-orange-600 rounded-md flex-row items-center"
+          onPress={() => {
+            setExportType("pdf");
+            setExportModalVisible(true);
+          }}
+        >
+          <Feather
+            name="file"
+            size={rs(18)}
+            color="white"
+            style={{ marginRight: rs(6) }}
+          />
+          <Text
+            style={{ fontSize: rf(16) }}
+            className="text-white font-inter-bold"
+          >
+            PDF
+          </Text>
+        </TouchableOpacity>
+
+        {/* --- EXISTING DELETE BUTTON --- */}
         <TouchableOpacity
           style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
           className={`${selectedLogs.length > 0 ? "bg-red-600" : "bg-gray-400"} rounded-md`}
