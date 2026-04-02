@@ -7,6 +7,7 @@ import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -287,28 +288,46 @@ export default function UsageHistory() {
     try {
       setLoading(true);
 
-      // 1. Format dates for Supabase query (YYYY-MM-DD)
-      const from = dateFrom.toISOString().split("T")[0];
-      const to = dateTo.toISOString().split("T")[0];
+      // 1. SAFE LOCAL DATE FORMATTING (Avoids the 1-day-off bug)
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
 
-      // 2. Fetch data specifically for the range
+      const from = formatDate(dateFrom);
+      const to = formatDate(dateTo);
+
+      console.log("Exporting range:", from, "to", to);
+
+      // 2. Fetch data
       const { data, error } = await supabase
         .from("equipment_logs")
         .select("*")
-        .gte("date", from)
-        .lte("date", to)
-        .order("created_at", { ascending: true });
+        .gte("date", from) // Greater than or equal to start date
+        .lte("date", to) // Less than or equal to end date
+        .order("date", { ascending: true })
+        .order("time_in", { ascending: true });
 
-      if (error || !data) throw new Error("Failed to fetch data for export");
+      if (error) throw error;
 
+      // 3. CHECK IF DATA EXISTS
+      if (!data || data.length === 0) {
+        alert(`No logs found between ${from} and ${to}.`);
+        setExportModalVisible(false);
+        return;
+      }
+
+      // 4. Proceed with export
       if (exportType === "excel") {
         await generateExcel(data);
       } else {
         await generatePDF(data);
       }
     } catch (error) {
-      console.error(error);
-      alert("Export failed");
+      console.error("Export Error:", error);
+      alert("Failed to export data. Check console for details.");
     } finally {
       setLoading(false);
       setExportModalVisible(false);
@@ -316,9 +335,14 @@ export default function UsageHistory() {
   };
 
   const generateExcel = async (data: EquipmentLog[]) => {
-    // 1. Prepare the Header and Rows
+    // Create a local reference cast to 'any' to bypass the TS errors
+    const FS: any = FileSystem;
+
+    console.log("Generating Excel with records count:", data.length);
+    console.log("Sample record:", data[0]); // Check if keys match log.full_name, etc.
+
     const header = [
-      "User",
+      "Name",
       "Equipment",
       "Model",
       "Date",
@@ -328,7 +352,7 @@ export default function UsageHistory() {
       "Status",
     ];
     const rows = data.map((log) => [
-      formatName(log.full_name),
+      log.full_name,
       log.equipment_name,
       log.model_name || "N/A",
       log.date,
@@ -338,80 +362,71 @@ export default function UsageHistory() {
       log.status,
     ]);
 
-    // 2. Create worksheet
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-
-    // 3. Add styling to the Header (Row 1)
-    const range = XLSX.utils.decode_range(ws["!ref"]!!);
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const address = XLSX.utils.encode_col(C) + "1"; // Targeting the first row
-      if (!ws[address]) continue;
-      ws[address].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "4F81BD" } }, // Nice blue background
-        alignment: { horizontal: "center" },
-      };
-    }
-
-    // 4. Create workbook and save
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Usage Logs");
 
-    const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
-    const FS = FileSystem as any;
-
     const fileName = `Usage_History_${Date.now()}.xlsx`;
-    const uri = (FS.cacheDirectory || FS.documentDirectory) + fileName;
 
-    try {
-      // Calling the function directly from the casted object
+    if (Platform.OS === "web") {
+      // --- PC / WEB VERSION ---
+      XLSX.writeFile(wb, fileName);
+    } else {
+      // --- MOBILE VERSION ---
+      // Use 'FS' (the casted version) to access the properties
+      const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+      const uri = (FS.cacheDirectory || "") + fileName;
+
       await FS.writeAsStringAsync(uri, base64, {
-        encoding: FS.EncodingType?.Base64 || "base64",
+        encoding: FS.EncodingType.Base64,
       });
 
       await Sharing.shareAsync(uri);
-    } catch (error) {
-      console.error("Export Error:", error);
     }
   };
 
   const generatePDF = async (data: EquipmentLog[]) => {
     const htmlContent = `
-      <html>
-        <head>
-          <style>
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
-            th { background-color: #f2f2f2; }
-            h2 { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <h2>Usage History Report</h2>
-          <table>
-            <tr>
-              <th>User</th><th>Equipment</th><th>Date</th><th>In</th><th>Out</th><th>Status</th>
+    <html>
+      <body style="font-family: sans-serif; padding: 20px;">
+        <h2 style="text-align: center;">Equipment Usage Report</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead>
+            <tr style="background-color: #f2f2f2;">
+              <th style="border: 1px solid #ddd; padding: 8px;">User</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">Equipment</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">Date</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">Status</th>
             </tr>
+          </thead>
+          <tbody>
             ${data
               .map(
                 (log) => `
               <tr>
-                <td>${log.full_name}</td>
-                <td>${log.equipment_name}</td>
-                <td>${log.date}</td>
-                <td>${log.time_in}</td>
-                <td>${log.time_out || "-"}</td>
-                <td>${log.status}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${log.full_name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${log.equipment_name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${log.date}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${log.status}</td>
               </tr>
             `,
               )
               .join("")}
-          </table>
-        </body>
-      </html>
-    `;
-    const { uri } = await Print.printToFileAsync({ html: htmlContent });
-    await Sharing.shareAsync(uri);
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+
+    if (Platform.OS === "web") {
+      // --- PC / WEB VERSION ---
+      // This opens the browser's Print/Save dialog
+      await Print.printAsync({ html: htmlContent });
+    } else {
+      // --- MOBILE VERSION ---
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri);
+    }
   };
 
   return (
