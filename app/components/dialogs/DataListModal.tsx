@@ -23,7 +23,7 @@ interface DataListModalProps {
   bg: string;
   data: DataItem[];
   activeFilter: string;
-  onFilterChange: (filter: string) => void;
+  onFilterChange: (f: string) => void;
 }
 
 export default function DataListModal({
@@ -38,7 +38,6 @@ export default function DataListModal({
   onFilterChange,
 }: DataListModalProps) {
   const { width } = useWindowDimensions();
-
   const isMobile = width < 1024;
   const scale = isMobile ? Math.min(width / 430, 1) : Math.min(width / 1440, 1);
   const rf = (size: number) => size * scale;
@@ -56,12 +55,13 @@ export default function DataListModal({
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
         <View
           style={{
-            width: isMobile ? "100%" : 480,
-            maxHeight: "80%",
+            width: isMobile ? "100%" : 500,
+            height: rs(600),
             padding: rs(24),
           }}
           className="bg-white rounded-2xl shadow-xl"
         >
+          {/* HEADER */}
           <View className="flex-row justify-between items-center mb-6">
             <View className="flex-row items-center flex-1 pr-4">
               <View className={`${bg} p-3 rounded-xl mr-4`}>
@@ -80,101 +80,101 @@ export default function DataListModal({
             </TouchableOpacity>
           </View>
 
+          {/* LOCAL FILTERS (Only affects this modal) */}
           <View style={{ marginBottom: rs(20) }}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: rs(8) }}
             >
-              {filters.map((f) => {
-                const isActive = activeFilter === f;
-                return (
-                  <TouchableOpacity
-                    key={f}
-                    onPress={() => onFilterChange(f)}
-                    style={{
-                      paddingVertical: rs(8),
-                      paddingHorizontal: rs(14),
-                      backgroundColor: isActive ? color : "#f1f5f9",
-                      borderRadius: rs(20),
-                    }}
+              {filters.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => onFilterChange(f)}
+                  style={{
+                    paddingVertical: rs(8),
+                    paddingHorizontal: rs(14),
+                    backgroundColor: activeFilter === f ? color : "#f1f5f9",
+                    borderRadius: rs(20),
+                  }}
+                >
+                  <Text
+                    style={{ fontSize: rf(13) }}
+                    className={`font-inter-medium ${activeFilter === f ? "text-white" : "text-gray-600"}`}
                   >
-                    <Text
-                      style={{ fontSize: rf(13) }}
-                      className={`font-inter-medium ${isActive ? "text-white" : "text-gray-600"}`}
-                    >
-                      {f}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                    {f}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ marginBottom: rs(16) }}
-          >
-            {data.length === 0 ? (
-              <View style={{ paddingVertical: rs(40), alignItems: "center" }}>
-                <Feather name="database" size={rs(32)} color="#cbd5e1" />
-                <Text
-                  style={{ fontSize: rf(15), marginTop: rs(12) }}
-                  className="text-gray-400 font-inter"
-                >
-                  No records found for this period.
-                </Text>
-              </View>
-            ) : (
-              data.map((item, index) => (
+          {/* LIST */}
+          <View style={{ flex: 1, marginBottom: rs(16) }}>
+            <ScrollView showsVerticalScrollIndicator={true}>
+              {data.length === 0 ? (
                 <View
-                  key={index}
-                  style={{ padding: rs(14), marginBottom: rs(8) }}
-                  className="flex-row items-center bg-gray-50 rounded-xl border border-gray-100"
+                  style={{ flex: 1, paddingTop: rs(80), alignItems: "center" }}
                 >
-                  <View
-                    style={{
-                      width: rs(30),
-                      height: rs(30),
-                      borderRadius: 15,
-                      marginRight: rs(12),
-                      backgroundColor:
-                        index === 0
-                          ? "#fbbf24"
-                          : index === 1
-                            ? "#94a3b8"
-                            : index === 2
-                              ? "#b45309"
-                              : "#e2e8f0",
-                    }}
-                    className="items-center justify-center"
+                  <Feather name="database" size={rs(40)} color="#cbd5e1" />
+                  <Text
+                    style={{ fontSize: rf(15), marginTop: rs(12) }}
+                    className="text-gray-400 font-inter text-center"
                   >
-                    <Text
-                      style={{ fontSize: rf(12) }}
-                      className={`font-inter-bold ${index < 3 ? "text-white" : "text-gray-500"}`}
-                    >
-                      #{index + 1}
-                    </Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text
-                      style={{ fontSize: rf(15) }}
-                      className="font-inter-bold text-gray-800"
-                      numberOfLines={1}
-                    >
-                      {item.label}
-                    </Text>
-                    <Text
-                      style={{ fontSize: rf(13) }}
-                      className="font-inter text-gray-500"
-                    >
-                      {item.value}
-                    </Text>
-                  </View>
+                    No records found for this period.
+                  </Text>
                 </View>
-              ))
-            )}
-          </ScrollView>
+              ) : (
+                data.map((item, index) => (
+                  <View
+                    key={index}
+                    style={{ padding: rs(14), marginBottom: rs(8) }}
+                    className="flex-row items-center bg-gray-50 rounded-xl border border-gray-100"
+                  >
+                    <View
+                      style={{
+                        width: rs(30),
+                        height: rs(30),
+                        borderRadius: 15,
+                        marginRight: rs(12),
+                        backgroundColor:
+                          index === 0
+                            ? "#fbbf24"
+                            : index === 1
+                              ? "#94a3b8"
+                              : index === 2
+                                ? "#b45309"
+                                : "#e2e8f0",
+                      }}
+                      className="items-center justify-center"
+                    >
+                      <Text
+                        style={{ fontSize: rf(12) }}
+                        className={`font-inter-bold ${index < 3 ? "text-white" : "text-gray-500"}`}
+                      >
+                        #{index + 1}
+                      </Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        style={{ fontSize: rf(15) }}
+                        className="font-inter-bold text-gray-800"
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                      <Text
+                        style={{ fontSize: rf(13) }}
+                        className="font-inter text-gray-500"
+                      >
+                        {item.value}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
 
           <TouchableOpacity
             onPress={onClose}

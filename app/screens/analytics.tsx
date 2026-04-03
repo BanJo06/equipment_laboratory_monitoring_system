@@ -22,27 +22,30 @@ interface AnalyticsLists {
 
 export default function Analytics() {
   const { width } = useWindowDimensions();
-
-  // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
-  const desktopScale = Math.min(width / 1440, 1);
-  const mobileScale = Math.min(width / 430, 1);
-  const scale = isMobile ? mobileScale : desktopScale;
-
+  const scale = isMobile ? Math.min(width / 430, 1) : Math.min(width / 1440, 1);
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
   // --- STATE ---
   const [loading, setLoading] = useState(true);
   const [rawLogs, setRawLogs] = useState<any[]>([]);
-  const [activeFilter, setActiveFilter] = useState("All time");
-  const [lists, setLists] = useState<AnalyticsLists>({
+
+  // Separate states for Dashboard vs Modal
+  const [overviewLists, setOverviewLists] = useState<AnalyticsLists>({
+    equipment: [],
+    logins: [],
+    time: [],
+    peak: [],
+  });
+  const [filteredLists, setFilteredLists] = useState<AnalyticsLists>({
     equipment: [],
     logins: [],
     time: [],
     peak: [],
   });
 
+  const [modalFilter, setModalFilter] = useState("All time");
   const [activeModal, setActiveModal] = useState<keyof AnalyticsLists | null>(
     null,
   );
@@ -50,7 +53,7 @@ export default function Analytics() {
 
   // --- HELPERS ---
   const formatTotalTime = (totalMins: number) => {
-    if (totalMins === 0) return "0h 0m";
+    if (totalMins <= 0) return "0h 0m";
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
     return `${h}h ${m}m`;
@@ -66,47 +69,13 @@ export default function Analytics() {
     return `${formatHour(startH)} - ${formatHour(endH)}`;
   };
 
-  // --- DATA FETCHING ---
-  const fetchRawData = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("equipment_logs").select("*");
-    if (error || !data) {
-      console.error("Failed to load analytics", error);
-      setLoading(false);
-      return;
-    }
-    setRawLogs(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchRawData();
-  }, []);
-
-  // --- PROCESSING LOGIC ---
-  useEffect(() => {
-    if (rawLogs.length === 0) return;
-
-    const now = new Date();
-    const filteredData = rawLogs.filter((log) => {
-      if (activeFilter === "All time") return true;
-      const logDate = new Date(log.created_at);
-      const diffInMs = now.getTime() - logDate.getTime();
-      const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-      if (activeFilter === "24 hours") return diffInDays <= 1;
-      if (activeFilter === "3 days") return diffInDays <= 3;
-      if (activeFilter === "7 days") return diffInDays <= 7;
-      if (activeFilter === "30 days") return diffInDays <= 30;
-      return true;
-    });
-
+  const processData = (logs: any[]) => {
     const eqCounts: Record<string, number> = {};
     const loginCounts: Record<string, number> = {};
     const timeSpent: Record<string, number> = {};
     const hourCounts: Record<number, number> = {};
 
-    filteredData.forEach((log) => {
+    logs.forEach((log) => {
       if (log.equipment_name)
         eqCounts[log.equipment_name] = (eqCounts[log.equipment_name] || 0) + 1;
       if (log.full_name)
@@ -146,7 +115,7 @@ export default function Analytics() {
       formattedHourCounts[formatHourBlock(parseInt(h))] = count;
     });
 
-    setLists({
+    return {
       equipment: getSortedList(eqCounts, (v) => `${v} total log-ins`),
       logins: getSortedList(loginCounts, (v) => `${v} separate log-ins`),
       time: getSortedList(
@@ -154,10 +123,41 @@ export default function Analytics() {
         (v) => `${formatTotalTime(v)} total duration`,
       ),
       peak: getSortedList(formattedHourCounts, (v) => `${v} sessions recorded`),
-    });
-  }, [rawLogs, activeFilter]);
+    };
+  };
 
-  // --- MODAL CONFIG HELPER ---
+  // 1. Initial Fetch
+  useEffect(() => {
+    const fetchRawData = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from("equipment_logs").select("*");
+      if (!error && data) {
+        setRawLogs(data);
+        setOverviewLists(processData(data)); // Set "All Time" for background cards
+      }
+      setLoading(false);
+    };
+    fetchRawData();
+  }, []);
+
+  // 2. Filter logic for the Modal only
+  useEffect(() => {
+    if (rawLogs.length === 0) return;
+    const now = new Date();
+    const filtered = rawLogs.filter((log) => {
+      if (modalFilter === "All time") return true;
+      const logDate = new Date(log.created_at);
+      const diffInDays =
+        (now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (modalFilter === "24 hours") return diffInDays <= 1;
+      if (modalFilter === "3 days") return diffInDays <= 3;
+      if (modalFilter === "7 days") return diffInDays <= 7;
+      if (modalFilter === "30 days") return diffInDays <= 30;
+      return true;
+    });
+    setFilteredLists(processData(filtered));
+  }, [rawLogs, modalFilter]);
+
   const getModalConfig = () => {
     if (!activeModal) return null;
     const configs = {
@@ -186,74 +186,29 @@ export default function Analytics() {
         bg: "bg-red-100",
       },
     };
-    return { ...configs[activeModal], data: lists[activeModal] };
+    return { ...configs[activeModal], data: filteredLists[activeModal] };
   };
-
   const currentModal = getModalConfig();
-
-  const MetricCard = ({
-    title,
-    value,
-    subtext,
-    icon,
-    color,
-    bg,
-    onPress,
-  }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        width: isMobile ? "100%" : "48%",
-        marginBottom: rs(24),
-        padding: rs(24),
-      }}
-      className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm flex-row items-center active:bg-gray-100"
-    >
-      <View
-        style={{ marginRight: rs(20) }}
-        className={`${bg} p-4 rounded-full`}
-      >
-        <Feather name={icon} size={rs(32)} color={color} />
-      </View>
-      <View className="flex-1">
-        <Text
-          style={{ fontSize: rf(14), marginBottom: rs(4) }}
-          className="font-inter text-gray-500"
-        >
-          {title}
-        </Text>
-        <Text
-          style={{ fontSize: rf(18), marginBottom: rs(4) }}
-          className="font-inter-bold text-gray-900"
-          numberOfLines={1}
-        >
-          {value}
-        </Text>
-        <Text style={{ fontSize: rf(14) }} className="font-inter text-blue-600">
-          {subtext}
-        </Text>
-      </View>
-      <Feather name="chevron-right" size={rs(20)} color="#cbd5e1" />
-    </TouchableOpacity>
-  );
 
   return (
     <View
       style={{ flex: 1, padding: rs(32) }}
       className="bg-white rounded-lg shadow-sm"
     >
-      {/* Fix: Conditional rendering prevents ghost modals */}
       {activeModal && currentModal && (
         <DataListModal
           visible={!!activeModal}
-          onClose={() => setActiveModal(null)}
+          onClose={() => {
+            setActiveModal(null);
+            setModalFilter("All time");
+          }}
           title={currentModal.title}
           icon={currentModal.icon}
           color={currentModal.color}
           bg={currentModal.bg}
           data={currentModal.data}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
+          activeFilter={modalFilter}
+          onFilterChange={setModalFilter}
         />
       )}
 
@@ -273,15 +228,18 @@ export default function Analytics() {
         <View
           style={{ flexDirection: "row", alignItems: "center", gap: rs(16) }}
         >
-          <SVG_ICONS.Analytics size={rs(50)} />
-          <View>
+          <SVG_ICONS.Analytics size={rs(64)} />
+          <View style={{ gap: rs(6), flexShrink: 1 }}>
             <Text
-              style={{ fontSize: rf(24) }}
-              className="font-inter-bold text-gray-900"
+              style={{ fontSize: rf(28) }}
+              className="font-inter-bold text-textPrimary-light"
             >
               Analytics
             </Text>
-            <Text style={{ fontSize: rf(14) }} className="text-gray-500">
+            <Text
+              style={{ fontSize: rf(16) }}
+              className="font-inter text-textSecondary-light"
+            >
               Usage statistics overview
             </Text>
           </View>
@@ -306,41 +264,54 @@ export default function Analytics() {
               justifyContent: "space-between",
             }}
           >
+            {/* Background Cards: Use overviewLists (All Time) */}
             <MetricCard
-              title="Top Equipment"
-              value={lists.equipment[0]?.label || "N/A"}
-              subtext={lists.equipment[0]?.value || "0 total log-ins"}
+              title="Top Equipment (All Time)"
+              value={overviewLists.equipment[0]?.label || "N/A"}
+              subtext={overviewLists.equipment[0]?.value || "0 total log-ins"}
               icon="box"
               color="#1d4ed8"
               bg="bg-blue-100"
               onPress={() => setActiveModal("equipment")}
+              rs={rs}
+              rf={rf}
+              isMobile={isMobile}
             />
             <MetricCard
-              title="Top User"
-              value={lists.logins[0]?.label || "N/A"}
-              subtext={lists.logins[0]?.value || "0 separate log-ins"}
+              title="Top User (All Time)"
+              value={overviewLists.logins[0]?.label || "N/A"}
+              subtext={overviewLists.logins[0]?.value || "0 separate log-ins"}
               icon="user-check"
               color="#16a34a"
               bg="bg-green-100"
               onPress={() => setActiveModal("logins")}
+              rs={rs}
+              rf={rf}
+              isMobile={isMobile}
             />
             <MetricCard
-              title="Most Active"
-              value={lists.time[0]?.label || "N/A"}
-              subtext={lists.time[0]?.value || "0h 0m total duration"}
+              title="Most Active (All Time)"
+              value={overviewLists.time[0]?.label || "N/A"}
+              subtext={overviewLists.time[0]?.value || "0h 0m total duration"}
               icon="clock"
               color="#f59e0b"
               bg="bg-amber-100"
               onPress={() => setActiveModal("time")}
+              rs={rs}
+              rf={rf}
+              isMobile={isMobile}
             />
             <MetricCard
-              title="Peak Time"
-              value={lists.peak[0]?.label || "N/A"}
-              subtext="Highest traffic time-frame"
+              title="Peak Usage (All Time)"
+              value={overviewLists.peak[0]?.label || "N/A"}
+              subtext="Highest traffic timeframe"
               icon="trending-up"
               color="#dc2626"
               bg="bg-red-100"
               onPress={() => setActiveModal("peak")}
+              rs={rs}
+              rf={rf}
+              isMobile={isMobile}
             />
           </View>
         )}
@@ -348,3 +319,49 @@ export default function Analytics() {
     </View>
   );
 }
+
+const MetricCard = ({
+  title,
+  value,
+  subtext,
+  icon,
+  color,
+  bg,
+  onPress,
+  rs,
+  rf,
+  isMobile,
+}: any) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={{
+      width: isMobile ? "100%" : "48%",
+      marginBottom: rs(24),
+      padding: rs(24),
+    }}
+    className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm flex-row items-center active:bg-gray-100"
+  >
+    <View style={{ marginRight: rs(20) }} className={`${bg} p-4 rounded-full`}>
+      <Feather name={icon} size={rs(32)} color={color} />
+    </View>
+    <View className="flex-1">
+      <Text
+        style={{ fontSize: rf(14), marginBottom: rs(4) }}
+        className="font-inter text-gray-500"
+      >
+        {title}
+      </Text>
+      <Text
+        style={{ fontSize: rf(18), marginBottom: rs(4) }}
+        className="font-inter-bold text-gray-900"
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text style={{ fontSize: rf(14) }} className="font-inter text-gray-400">
+        {subtext}
+      </Text>
+    </View>
+    <Feather name="chevron-right" size={rs(20)} color="#cbd5e1" />
+  </TouchableOpacity>
+);
