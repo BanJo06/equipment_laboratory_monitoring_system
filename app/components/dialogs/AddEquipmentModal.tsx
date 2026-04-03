@@ -120,7 +120,8 @@ export default function AddEquipmentModal({
         .from("equipment_inventory")
         .select("id")
         .eq("name", equipmentData.name)
-        .eq("model_name", equipmentData.model_name);
+        .eq("model_name", equipmentData.model_name)
+        .eq("location", equipmentData.location);
 
       // If we are editing, exclude the current item's ID from the search
       if (equipmentToEdit) {
@@ -131,14 +132,13 @@ export default function AddEquipmentModal({
 
       if (fetchError) throw new Error(fetchError.message);
 
-      // 2. TRIGGER ERROR MODAL IF EXISTS
       if (existingItems && existingItems.length > 0) {
         triggerStatus(
           "Error",
-          "Your input values already exist in the database.",
+          "This equipment model already exists in this specific location.",
         );
         setIsLoading(false);
-        return; // Stop the save process
+        return;
       }
 
       // 3. PROCEED WITH SAVE/UPDATE IF NO DUPLICATE
