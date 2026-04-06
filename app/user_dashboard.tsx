@@ -61,6 +61,7 @@ export default function UserDashboard() {
     name: string;
     units: number;
     model_name: string;
+    location: string;
   } | null>(null);
 
   // Time and session states
@@ -140,7 +141,7 @@ export default function UserDashboard() {
       .from("equipment_logs")
       .select("*")
       .eq("full_name", fullNameStr)
-      .eq("status", "In Use") // CHANGED: Now filters by active status
+      .eq("status", "In Use")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -183,6 +184,16 @@ export default function UserDashboard() {
     setIsLoggingOut(false);
     setLogoutModalVisible(false);
     router.replace("/");
+  };
+
+  const handleOpenQRCode = (session: any) => {
+    setQrSessionData({
+      id: session.id,
+      equipment_name: session.equipment_name,
+      model_name: session.model_name || "N/A",
+      location: session.location || "designated area", // Or session.location if available in DB
+    });
+    setQrModalVisible(true);
   };
 
   const handleStartSession = async () => {
@@ -255,6 +266,7 @@ export default function UserDashboard() {
           full_name: fullNameStr,
           equipment_name: selectedEquipment.name,
           model_name: selectedEquipment.model_name,
+          location: selectedEquipment.location,
           date: currentDate,
           time_in: timeIn,
           status: "In Use",
@@ -878,7 +890,7 @@ export default function UserDashboard() {
                             justifyContent: "space-between",
                           }}
                         >
-                          <View className="flex-row items-center">
+                          <View className="flex-row items-center ">
                             <MaterialCommunityIcons
                               name="flask"
                               size={rs(20)}
@@ -891,6 +903,21 @@ export default function UserDashboard() {
                               {session.equipment_name}
                             </Text>
                           </View>
+                          <TouchableOpacity
+                            style={{
+                              paddingVertical: rs(8),
+                              paddingHorizontal: rs(12),
+                            }}
+                            className="bg-mainColor-light rounded-md"
+                            onPress={() => handleOpenQRCode(session)}
+                          >
+                            <Text
+                              style={{ fontSize: rf(14) }}
+                              className="text-white font-inter-bold"
+                            >
+                              QR Code
+                            </Text>
+                          </TouchableOpacity>
                         </View>
                         <View
                           style={{ padding: rs(12), marginBottom: rs(16) }}

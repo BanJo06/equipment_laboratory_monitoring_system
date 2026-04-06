@@ -17,6 +17,7 @@ interface Equipment {
   name: string;
   units: number;
   model_name: string;
+  location: string;
 }
 
 interface ChooseEquipmentModalProps {
@@ -54,7 +55,7 @@ export default function ChooseEquipmentModal({
     setLoading(true);
     const { data, error } = await supabase
       .from("equipment_inventory")
-      .select("id, name, units, model_name")
+      .select("id, name, units, model_name, location")
       .order("name", { ascending: true });
 
     if (!error && data) {
