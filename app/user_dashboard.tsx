@@ -880,63 +880,76 @@ export default function UserDashboard() {
                     activeSessions.map((session) => (
                       <View
                         key={session.id}
-                        style={{ padding: rs(12), marginBottom: rs(12) }}
+                        style={{ padding: rs(16), marginBottom: rs(12) }}
                         className="bg-gray-200 rounded-xl"
                       >
-                        <View
-                          style={{
-                            marginBottom: rs(8),
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <View className="flex-row items-center ">
-                            <MaterialCommunityIcons
-                              name="flask"
-                              size={rs(20)}
-                              color="#1d4ed8"
-                            />
-                            <Text
-                              style={{ fontSize: rf(16) }}
-                              className="font-inter text-textPrimary-light ml-2 font-bold"
-                            >
-                              {session.equipment_name}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            style={{
-                              paddingVertical: rs(8),
-                              paddingHorizontal: rs(12),
-                            }}
-                            className="bg-mainColor-light rounded-md"
-                            onPress={() => handleOpenQRCode(session)}
+                        {/* 1. Top Row: Equipment Name only */}
+                        <View className="flex-row items-center mb-3">
+                          <MaterialCommunityIcons
+                            name="flask"
+                            size={rs(22)}
+                            color="#1d4ed8"
+                          />
+                          <Text
+                            style={{ fontSize: rf(18) }}
+                            className="font-inter text-textPrimary-light ml-2 font-bold flex-1"
+                            numberOfLines={1}
                           >
-                            <Text
-                              style={{ fontSize: rf(14) }}
-                              className="text-white font-inter-bold"
-                            >
-                              QR Code
-                            </Text>
-                          </TouchableOpacity>
+                            {session.equipment_name}
+                          </Text>
                         </View>
+
+                        {/* 2. Started Time Badge */}
                         <View
-                          style={{ padding: rs(12), marginBottom: rs(16) }}
+                          style={{ padding: rs(10), marginBottom: rs(16) }}
                           className="bg-white items-center rounded-xl self-start flex-row"
                         >
-                          <Feather name="clock" size={rs(20)} color="#112747" />
-                          <Text style={{ fontSize: rf(14) }} className="ml-2">
+                          <Feather name="clock" size={rs(18)} color="#112747" />
+                          <Text
+                            style={{ fontSize: rf(14) }}
+                            className="ml-2 font-inter"
+                          >
                             Started: {session.time_in}
                           </Text>
                         </View>
-                        <TouchableOpacity
-                          style={{ padding: rs(12) }}
-                          className="bg-red-600 rounded-md items-center"
-                          onPress={() => handleStopSession(session)}
-                        >
-                          <Text className="text-white font-inter-bold">
-                            Stop Using
-                          </Text>
-                        </TouchableOpacity>
+
+                        {/* 3. Action Buttons Section (Stacked for Mobile) */}
+                        <View style={{ gap: rs(8) }}>
+                          {/* Full-Width QR Code Button */}
+                          <TouchableOpacity
+                            style={{ paddingVertical: rs(12) }}
+                            className="bg-mainColor-light rounded-md items-center justify-center w-full"
+                            onPress={() => handleOpenQRCode(session)}
+                          >
+                            <View className="flex-row items-center">
+                              <MaterialCommunityIcons
+                                name="qrcode"
+                                size={rs(20)}
+                                color="white"
+                              />
+                              <Text
+                                style={{ fontSize: rf(16) }}
+                                className="text-white font-inter-bold ml-2"
+                              >
+                                Generate QR Code
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+
+                          {/* Full-Width Stop Button */}
+                          <TouchableOpacity
+                            style={{ paddingVertical: rs(12) }}
+                            className="bg-red-600 rounded-md items-center justify-center w-full"
+                            onPress={() => handleStopSession(session)}
+                          >
+                            <Text
+                              style={{ fontSize: rf(16) }}
+                              className="text-white font-inter-bold"
+                            >
+                              Stop Using
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ))
                   )}
