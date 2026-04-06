@@ -946,7 +946,7 @@ export default function UserDashboard() {
                               style={{ fontSize: rf(16) }}
                               className="text-white font-inter-bold"
                             >
-                              Stop Using
+                              Stop Using Equipment
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -982,13 +982,13 @@ export default function UserDashboard() {
                     className="bg-white rounded-2xl shadow-sm justify-center"
                   >
                     <Text
-                      style={{ fontSize: rf(18) }}
+                      style={{ fontSize: rf(24) }}
                       className="font-inter-bold text-textPrimary-light"
                     >
                       {stat.label}
                     </Text>
                     <Text
-                      style={{ fontSize: rf(14) }}
+                      style={{ fontSize: rf(20) }}
                       className="font-inter text-textSecondary-light mt-2"
                       numberOfLines={2}
                     >
