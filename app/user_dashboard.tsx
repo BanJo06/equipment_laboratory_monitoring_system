@@ -5,9 +5,11 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -48,10 +50,90 @@ export default function UserDashboard() {
     visible: false,
     title: "",
     message: "",
+    onCloseOverride: null as (() => void) | null,
   });
 
+  // --- IDLE LOGOUT LOGIC ---
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const IDLE_TIME_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  const forceLogout = async () => {
+    // 1. Update Supabase
+    if (id) {
+      await supabase.from("accounts").update({ isOnline: false }).eq("id", id);
+    }
+
+    // 2. Show the specific mandatory alert
+    setStatusConfig({
+      visible: true,
+      title: "Session Expired",
+      message: "You are idle for 5 minutes, it will automatically log-out",
+      onCloseOverride: () => {
+        router.replace("/"); // Redirect after they acknowledge the alert
+      },
+    });
+  };
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+
+    // Using window.setTimeout ensures it's treated as a browser-style timer
+    idleTimerRef.current = setTimeout(forceLogout, IDLE_TIME_LIMIT);
+  };
+
+  useEffect(() => {
+    // START INITIAL TIMER
+    resetIdleTimer();
+
+    // 1. MOBILE LOGIC (Background tracking)
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        resetIdleTimer(); // Reset when they come back
+      } else if (nextAppState === "background") {
+        // When in background, we keep the timer running to force logout
+        // Note: Mobile OS may throttle timers, but this triggers upon return if time passed
+      }
+    });
+
+    // 2. WEB LOGIC (Mouse/Keyboard interaction)
+    if (Platform.OS === "web") {
+      const events = [
+        "mousedown",
+        "mousemove",
+        "keypress",
+        "scroll",
+        "touchstart",
+      ];
+      events.forEach((event) => {
+        window.addEventListener(event, resetIdleTimer);
+      });
+
+      return () => {
+        subscription.remove();
+        events.forEach((event) => {
+          window.removeEventListener(event, resetIdleTimer);
+        });
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      };
+    }
+
+    return () => {
+      subscription.remove();
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
   const closeStatusModal = () => {
-    setStatusConfig((prev) => ({ ...prev, visible: false }));
+    if (statusConfig.onCloseOverride) {
+      statusConfig.onCloseOverride();
+    }
+    setStatusConfig((prev) => ({
+      ...prev,
+      visible: false,
+      onCloseOverride: null,
+    }));
   };
 
   // Equipment selection states
@@ -201,49 +283,54 @@ export default function UserDashboard() {
       const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(am|pm|AM|PM)$/;
 
       if (!manualTime.trim()) {
-        setStatusConfig({
+        setStatusConfig((prev) => ({
+          ...prev,
           visible: true,
           title: "Error",
           message: "Please enter a manual time.",
-        });
+        }));
         return;
       }
 
       if (!timeRegex.test(manualTime.trim())) {
-        setStatusConfig({
+        setStatusConfig((prev) => ({
+          ...prev,
           visible: true,
           title: "Invalid Format",
           message:
             "Please enter time in a valid format (e.g., 5:00 AM, 5:00am, or 05:00 PM).",
-        });
+        }));
         return;
       }
     }
 
     if (!selectedEquipment) {
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "Please select an equipment first.",
-      });
+      }));
       return;
     }
 
     if (selectedEquipment.units <= 0) {
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "This equipment is currently out of stock.",
-      });
+      }));
       return;
     }
 
     if (timeMode === "manual" && !manualTime.trim()) {
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "Please enter a manual time.",
-      });
+      }));
       return;
     }
 
@@ -275,11 +362,12 @@ export default function UserDashboard() {
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "Failed to start session. Please try again.",
-      });
+      }));
       setIsStartingSession(false);
       return;
     }
@@ -291,11 +379,12 @@ export default function UserDashboard() {
       .update({ units: newStock })
       .eq("id", selectedEquipment.id);
 
-    setStatusConfig({
+    setStatusConfig((prev) => ({
+      ...prev,
       visible: true,
       title: "Session Started",
       message: "The equipment log has been successfully recorded.",
-    });
+    }));
 
     setSelectedEquipment(null);
     setManualTime("");
@@ -331,22 +420,24 @@ export default function UserDashboard() {
 
     if (error) {
       console.error("Error stopping session:", error);
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "Failed to stop session.",
-      });
+      }));
       setIsStoppingSession(false);
       return;
     }
 
     await returnEquipmentStock(session.equipment_name);
 
-    setStatusConfig({
+    setStatusConfig((prev) => ({
+      ...prev,
       visible: true,
       title: "Session Stopped",
       message: "The session has been successfully stopped and recorded.",
-    });
+    }));
 
     fetchActiveSessions();
     fetchInventory();
@@ -408,18 +499,20 @@ export default function UserDashboard() {
       // Common Cleanup: Return stock and refresh UI
       await returnEquipmentStock(session.equipment_name);
 
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: statusTitle,
         message: statusMsg,
-      });
+      }));
     } catch (error) {
       console.error("Error processing cancellation:", error);
-      setStatusConfig({
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
         message: "An error occurred while processing the cancellation.",
-      });
+      }));
     } finally {
       fetchActiveSessions();
       fetchInventory();
