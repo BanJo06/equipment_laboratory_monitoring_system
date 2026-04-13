@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  ActivityIndicator,
   Modal,
   Text,
   TouchableOpacity,
@@ -13,6 +12,8 @@ interface StopSessionConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   isStopping: boolean;
+  title: string;
+  message: string;
 }
 
 export default function StopSessionConfirmationModal({
@@ -20,6 +21,8 @@ export default function StopSessionConfirmationModal({
   onClose,
   onConfirm,
   isStopping,
+  title,
+  message,
 }: StopSessionConfirmationModalProps) {
   const { width } = useWindowDimensions();
 
@@ -33,43 +36,26 @@ export default function StopSessionConfirmationModal({
   const rs = (size: number) => size * scale;
 
   return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      {/* Overlay */}
-      <View className="flex-1 justify-center items-center bg-black/50 px-4 py-8">
-        {/* Modal Card */}
+    <Modal animationType="fade" transparent={true} visible={visible}>
+      <View className="flex-1 justify-center items-center bg-black/50 px-4">
         <View
-          style={{
-            width: isMobile ? "100%" : 400,
-            padding: rf(24),
-            borderRadius: rs(12),
-          }}
-          className="bg-white shadow-lg"
+          style={{ width: isMobile ? "100%" : 400, padding: rf(24) }}
+          className="bg-white rounded-xl shadow-lg"
         >
-          {/* Header */}
           <Text
             style={{ fontSize: rf(24), marginBottom: rs(16) }}
             className="font-inter-bold text-textPrimary-light"
           >
-            Stop Session
+            {title} {/* Dynamic Title */}
           </Text>
-
-          {/* Body Text */}
           <Text
             style={{ fontSize: rf(16), marginBottom: rs(24) }}
             className="font-inter text-textPrimary-light leading-6"
           >
-            Are you sure you want to stop this session? This action will record
-            your final duration and return the equipment to the inventory.
+            {message} {/* Dynamic Message */}
           </Text>
 
-          {/* Action Buttons */}
           <View className="flex-row justify-end gap-2">
-            {/* Cancel Button */}
             <TouchableOpacity
               style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
               className="bg-gray-200 rounded-md"
@@ -84,27 +70,18 @@ export default function StopSessionConfirmationModal({
               </Text>
             </TouchableOpacity>
 
-            {/* Confirm Stop Button */}
             <TouchableOpacity
-              style={{
-                paddingVertical: rs(10),
-                paddingHorizontal: rs(16),
-                minWidth: rs(120), // Ensure button doesn't jump when loading
-              }}
-              className={`bg-red-600 rounded-md items-center justify-center ${isStopping ? "opacity-50" : ""}`}
+              style={{ paddingVertical: rs(10), paddingHorizontal: rs(16) }}
+              className="bg-red-600 rounded-md"
               onPress={onConfirm}
               disabled={isStopping}
             >
-              {isStopping ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text
-                  style={{ fontSize: rf(16) }}
-                  className="font-inter-bold text-white"
-                >
-                  Yes, Stop Session
-                </Text>
-              )}
+              <Text
+                style={{ fontSize: rf(16) }}
+                className="font-inter-bold text-white"
+              >
+                {isStopping ? "Processing..." : "Yes, Proceed"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

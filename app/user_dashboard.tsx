@@ -40,6 +40,13 @@ export default function UserDashboard() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isStopModalVisible, setStopModalVisible] = useState(false);
   const [selectedSessionToStop, setSelectedSessionToStop] = useState<any>(null);
+  const [stopModalConfig, setStopModalConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    mode: "stop" as "stop" | "cancel",
+    session: null as any,
+  });
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrSessionData, setQrSessionData] = useState<{
     id: string;
@@ -397,18 +404,47 @@ export default function UserDashboard() {
     fetchInventory();
   };
 
-  // Triggered when user clicks the "Stop Using Equipment" button
   const handleStopPress = (session: any) => {
-    setSelectedSessionToStop(session);
-    setStopModalVisible(true);
+    // Calculate elapsed time in minutes
+    const start = new Date(session.created_at).getTime();
+    const current = new Date().getTime();
+    const diffInMinutes = (current - start) / (1000 * 60);
+
+    if (diffInMinutes < 2) {
+      // Mode: CANCEL (Mistake)
+      setStopModalConfig({
+        visible: true,
+        title: "Cancel Equipment?",
+        message:
+          "Are you sure to cancel this equipment? This log will never be recorded because usage was less than 2 minutes.",
+        mode: "cancel",
+        session: session,
+      });
+    } else {
+      // Mode: NORMAL STOP
+      setStopModalConfig({
+        visible: true,
+        title: "Stop Session?",
+        message:
+          "Are you sure you want to stop this session? This will record your final usage duration.",
+        mode: "stop",
+        session: session,
+      });
+    }
   };
 
-  // Triggered when user clicks "Yes" in the confirmation modal
-  const confirmStopSession = async () => {
-    if (selectedSessionToStop) {
-      setStopModalVisible(false);
-      await handleStopSession(selectedSessionToStop);
-      setSelectedSessionToStop(null);
+  const confirmStopAction = async () => {
+    const { mode, session } = stopModalConfig;
+
+    // Close modal first
+    setStopModalConfig((prev) => ({ ...prev, visible: false }));
+
+    if (mode === "cancel") {
+      // Use your existing cancel logic which deletes the log
+      await handleCancelSession(session);
+    } else {
+      // Use your normal stop logic which updates the log
+      await handleStopSession(session);
     }
   };
 
@@ -475,8 +511,8 @@ export default function UserDashboard() {
     let statusMsg = "";
 
     try {
-      if (diffInMinutes >= 10) {
-        // --- CASE A: 10+ minutes elapsed -> Mark as Completed ---
+      if (diffInMinutes >= 2) {
+        // --- CASE A: 2+ minutes elapsed -> Mark as Completed ---
         const timeOut = new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -499,9 +535,9 @@ export default function UserDashboard() {
 
         statusTitle = "Session Completed";
         statusMsg =
-          "Usage exceeded 10 minutes. Log has been marked as completed.";
+          "Usage exceeded 2 minutes. Log has been marked as completed.";
       } else {
-        // --- CASE B: Less than 10 minutes -> Delete/Remove Log ---
+        // --- CASE B: Less than 2 minutes -> Delete/Remove Log ---
         const { error } = await supabase
           .from("equipment_logs")
           .delete()
@@ -511,7 +547,7 @@ export default function UserDashboard() {
 
         statusTitle = "Log Removed";
         statusMsg =
-          "Session cancelled within 10 minutes. The log was not recorded.";
+          "Session cancelled within 2 minutes. The log was not recorded.";
       }
 
       // Common Cleanup: Return stock and refresh UI
@@ -596,12 +632,13 @@ export default function UserDashboard() {
       />
 
       <StopSessionConfirmationModal
-        visible={isStopModalVisible}
-        onClose={() => {
-          setStopModalVisible(false);
-          setSelectedSessionToStop(null);
-        }}
-        onConfirm={confirmStopSession}
+        visible={stopModalConfig.visible}
+        title={stopModalConfig.title}
+        message={stopModalConfig.message}
+        onClose={() =>
+          setStopModalConfig((prev) => ({ ...prev, visible: false }))
+        }
+        onConfirm={confirmStopAction}
         isStopping={isStoppingSession}
       />
 
