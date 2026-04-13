@@ -24,6 +24,7 @@ import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModa
 import QRCodeModal from "./components/dialogs/QRCodeModal";
 import StartSessionHelpModal from "./components/dialogs/StartSessionHelpModal";
 import StatusModal from "./components/dialogs/StatusModal";
+import StopSessionConfirmationModal from "./components/dialogs/StopSessionConfirmationModal";
 import UserActiveSessionsHelpModal from "./components/dialogs/UserActiveSessionsHelpModal";
 
 export default function UserDashboard() {
@@ -37,6 +38,8 @@ export default function UserDashboard() {
   // Modal state management
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isStopModalVisible, setStopModalVisible] = useState(false);
+  const [selectedSessionToStop, setSelectedSessionToStop] = useState<any>(null);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrSessionData, setQrSessionData] = useState<{
     id: string;
@@ -394,6 +397,21 @@ export default function UserDashboard() {
     fetchInventory();
   };
 
+  // Triggered when user clicks the "Stop Using Equipment" button
+  const handleStopPress = (session: any) => {
+    setSelectedSessionToStop(session);
+    setStopModalVisible(true);
+  };
+
+  // Triggered when user clicks "Yes" in the confirmation modal
+  const confirmStopSession = async () => {
+    if (selectedSessionToStop) {
+      setStopModalVisible(false);
+      await handleStopSession(selectedSessionToStop);
+      setSelectedSessionToStop(null);
+    }
+  };
+
   const handleStopSession = async (session: any) => {
     setIsStoppingSession(true);
 
@@ -575,6 +593,16 @@ export default function UserDashboard() {
         visible={qrModalVisible}
         onClose={() => setQrModalVisible(false)}
         sessionData={qrSessionData}
+      />
+
+      <StopSessionConfirmationModal
+        visible={isStopModalVisible}
+        onClose={() => {
+          setStopModalVisible(false);
+          setSelectedSessionToStop(null);
+        }}
+        onConfirm={confirmStopSession}
+        isStopping={isStoppingSession}
       />
 
       <StartSessionHelpModal
@@ -1033,7 +1061,7 @@ export default function UserDashboard() {
                           <TouchableOpacity
                             style={{ paddingVertical: rs(12) }}
                             className="bg-red-600 rounded-md items-center justify-center w-full"
-                            onPress={() => handleStopSession(session)}
+                            onPress={() => handleStopPress(session)}
                           >
                             <Text
                               style={{ fontSize: rf(16) }}
