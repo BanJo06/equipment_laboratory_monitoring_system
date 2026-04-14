@@ -63,6 +63,12 @@ export default function UserDashboard() {
     onCloseOverride: null as (() => void) | null,
   });
 
+  const updateOnlineStatus = async (status: boolean) => {
+    if (id) {
+      await supabase.from("accounts").update({ isOnline: status }).eq("id", id);
+    }
+  };
+
   // --- IDLE LOGOUT LOGIC ---
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IDLE_TIME_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -94,21 +100,35 @@ export default function UserDashboard() {
   };
 
   useEffect(() => {
-    // START INITIAL TIMER
+    // 1. SET ONLINE IMMEDIATELY ON MOUNT
+    updateOnlineStatus(true);
     resetIdleTimer();
 
-    // 1. MOBILE LOGIC (Background tracking)
+    // 2. MOBILE & GLOBAL STATE LOGIC
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (nextAppState === "active") {
-        resetIdleTimer(); // Reset when they come back
-      } else if (nextAppState === "background") {
-        // When in background, we keep the timer running to force logout
-        // Note: Mobile OS may throttle timers, but this triggers upon return if time passed
+        updateOnlineStatus(true); // User came back
+        resetIdleTimer();
+      } else {
+        // background or inactive (closing/minimizing)
+        updateOnlineStatus(false);
       }
     });
 
-    // 2. WEB LOGIC (Mouse/Keyboard interaction)
+    // 3. WEB SPECIFIC LOGIC (Tab Closing/Visibility)
     if (Platform.OS === "web") {
+      const handleVisibilityChange = () => {
+        updateOnlineStatus(document.visibilityState === "visible");
+      };
+
+      // This handles closing the tab or browser entirely
+      const handleBeforeUnload = () => {
+        updateOnlineStatus(false);
+      };
+
+      window.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("beforeunload", handleBeforeUnload);
+
       const events = [
         "mousedown",
         "mousemove",
@@ -116,24 +136,25 @@ export default function UserDashboard() {
         "scroll",
         "touchstart",
       ];
-      events.forEach((event) => {
-        window.addEventListener(event, resetIdleTimer);
-      });
+      events.forEach((event) => window.addEventListener(event, resetIdleTimer));
 
       return () => {
         subscription.remove();
-        events.forEach((event) => {
-          window.removeEventListener(event, resetIdleTimer);
-        });
+        window.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+        events.forEach((event) =>
+          window.removeEventListener(event, resetIdleTimer),
+        );
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       };
     }
 
     return () => {
       subscription.remove();
+      updateOnlineStatus(false); // Clean up on component unmount
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, []);
+  }, [id]);
 
   const closeStatusModal = () => {
     if (statusConfig.onCloseOverride) {

@@ -2,6 +2,8 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -50,6 +52,15 @@ export default function AdminDashboard() {
 
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
+
+  const updateAdminStatus = async (status: boolean) => {
+    if (adminId) {
+      await supabase
+        .from("accounts")
+        .update({ isOnline: status })
+        .eq("id", adminId);
+    }
+  };
 
   // --- LOGOUT LOGIC ---
   const handleLogoutConfirm = async () => {
@@ -133,28 +144,41 @@ export default function AdminDashboard() {
     fetchInventory();
     fetchOnlineUsers();
 
-    // Set up Realtime subscription for live online status updates
+    // 1. SET ONLINE ON MOUNT
+    updateAdminStatus(true);
+
+    // 2. LIFECYCLE LISTENERS
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      updateAdminStatus(nextAppState === "active");
+    });
+
+    if (Platform.OS === "web") {
+      const handleBeforeUnload = () => updateAdminStatus(false);
+      window.addEventListener("beforeunload", handleBeforeUnload);
+
+      // Add cleanup to the existing return
+    }
+
     const accountsSubscription = supabase
       .channel("accounts-online-status")
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "accounts",
-        },
-        () => {
-          // Re-fetch online users whenever any account is updated
-          fetchOnlineUsers();
-        },
+        { event: "UPDATE", schema: "public", table: "accounts" },
+        () => fetchOnlineUsers(),
       )
       .subscribe();
 
-    // Cleanup subscription on unmount
     return () => {
+      subscription.remove();
+      updateAdminStatus(false);
+      if (Platform.OS === "web") {
+        window.removeEventListener("beforeunload", () =>
+          updateAdminStatus(false),
+        );
+      }
       supabase.removeChannel(accountsSubscription);
     };
-  }, []);
+  }, [adminId]);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
