@@ -26,9 +26,6 @@ const ExpoAsyncStorage = {
   },
 };
 
-console.log("Supabase URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
-console.log("Supabase Key:", process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: ExpoAsyncStorage,
