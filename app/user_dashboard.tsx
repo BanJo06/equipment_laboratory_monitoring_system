@@ -236,16 +236,17 @@ export default function UserDashboard() {
   //   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   // };
 
-  const getDuration = (startTimeString: string) => {
-    const start = new Date(startTimeString).getTime();
-    const current = currentTime.getTime();
-    const diff = Math.max(0, current - start); // Prevent negative time
+  const parseDateTime = (dateStr: string, timeStr: string) => {
+    // dateStr is "YYYY-MM-DD", timeStr is "hh:mm AM/PM"
+    const [time, modifier] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (modifier?.toLowerCase() === "pm" && hours < 12) hours += 12;
+    if (modifier?.toLowerCase() === "am" && hours === 12) hours = 0;
 
-    // Returns the exact requested format: "0H 6M"
-    return `${hours}H ${minutes}M`;
+    const date = new Date(dateStr);
+    date.setHours(hours, minutes, 0, 0);
+    return date.getTime();
   };
 
   // --- DATA FETCHING ---
@@ -290,13 +291,27 @@ export default function UserDashboard() {
   const handleLogoutPress = () => setLogoutModalVisible(true);
 
   const confirmLogout = async () => {
+    // Start the loading state
     setIsLoggingOut(true);
-    if (id) {
-      await supabase.from("accounts").update({ isOnline: false }).eq("id", id);
+
+    try {
+      // 1. Attempt the database update
+      if (id) {
+        await supabase
+          .from("accounts")
+          .update({ isOnline: false })
+          .eq("id", id);
+      }
+    } catch (error) {
+      // 2. If the internet fails or Supabase throws an error, log it here
+      console.error("Error during logout:", error);
+    } finally {
+      // 3. This runs NO MATTER WHAT (success or error)
+      // It prevents the user from being "stuck" on a loading spinner
+      setIsLoggingOut(false);
+      setLogoutModalVisible(false);
+      router.replace("/");
     }
-    setIsLoggingOut(false);
-    setLogoutModalVisible(false);
-    router.replace("/");
   };
 
   const handleOpenQRCode = (session: any) => {
@@ -426,28 +441,24 @@ export default function UserDashboard() {
   };
 
   const handleStopPress = (session: any) => {
-    // Calculate elapsed time in minutes
-    const start = new Date(session.created_at).getTime();
+    const start = parseDateTime(session.date, session.time_in);
     const current = new Date().getTime();
     const diffInMinutes = (current - start) / (1000 * 60);
 
     if (diffInMinutes < 2) {
-      // Mode: CANCEL (Mistake)
       setStopModalConfig({
         visible: true,
         title: "Cancel Equipment?",
         message:
-          "Are you sure to cancel this equipment? This log will never be recorded because usage was less than 2 minutes.",
+          "Are you sure to cancel this equipment? Usage was less than 2 minutes.",
         mode: "cancel",
         session: session,
       });
     } else {
-      // Mode: NORMAL STOP
       setStopModalConfig({
         visible: true,
         title: "Stop Session?",
-        message:
-          "Are you sure you want to stop this session? This will record your final usage duration.",
+        message: "Are you sure you want to stop this session?",
         mode: "stop",
         session: session,
       });
@@ -489,7 +500,7 @@ export default function UserDashboard() {
       .update({
         time_out: timeOut,
         duration: finalDuration,
-        status: "completed", // NEW
+        status: "Completed", // NEW
       })
       .eq("id", session.id);
 
@@ -523,7 +534,7 @@ export default function UserDashboard() {
     setIsStoppingSession(true);
 
     // 1. Calculate the elapsed time in minutes
-    const start = new Date(session.created_at).getTime();
+    const start = parseDateTime(session.date, session.time_in);
     const current = new Date().getTime();
     const diffInMs = Math.max(0, current - start);
     const diffInMinutes = diffInMs / (1000 * 60);
