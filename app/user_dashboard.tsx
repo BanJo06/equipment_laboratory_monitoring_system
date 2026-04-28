@@ -19,7 +19,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import BookEquipmentModal from "./components/dialogs/BookEquipmentModal";
 import ChooseEquipmentModal from "./components/dialogs/ChooseEquipmentModal";
+import DeleteConfirmationModal from "./components/dialogs/DeleteConfirmModal";
 import LogoutConfirmationModal from "./components/dialogs/LogoutConfirmationModal";
 import QRCodeModal from "./components/dialogs/QRCodeModal";
 import StartSessionHelpModal from "./components/dialogs/StartSessionHelpModal";
@@ -56,6 +58,9 @@ export default function UserDashboard() {
   } | null>(null);
   const [startHelpVisible, setStartHelpVisible] = useState(false);
   const [activeHelpVisible, setActiveHelpVisible] = useState(false);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [loadingReservations, setLoadingReservations] = useState(true);
+  const [isBookModalVisible, setBookModalVisible] = useState(false);
   const [statusConfig, setStatusConfig] = useState({
     visible: false,
     title: "",
@@ -193,6 +198,11 @@ export default function UserDashboard() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
 
+  // --- DELETION STATES ---
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [reservationToDelete, setReservationToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
@@ -206,8 +216,11 @@ export default function UserDashboard() {
   const HEADER_H = rs(140);
   const START_SESSION_H = rs(452);
 
-  // Desktop specific sync
-  const TOP_SECTION_TOTAL_H = HEADER_H + CARD_MARGIN + START_SESSION_H;
+  // Align Right Column cards to match Left Column heights
+  const TOTAL_TOP_HEIGHT = HEADER_H + CARD_MARGIN + START_SESSION_H;
+  // (Total Height - Middle Margin) / 2 = Equal height for both cards
+  const RIGHT_SPLIT_CARD_H = (TOTAL_TOP_HEIGHT - CARD_MARGIN) / 2;
+
   const DESKTOP_INVENTORY_H = rs(260);
   const STAT_CARD_H = (DESKTOP_INVENTORY_H - CARD_MARGIN) / 2;
 
@@ -280,10 +293,31 @@ export default function UserDashboard() {
     setLoadingInventory(false);
   };
 
+  //Fetch Reservations Fetch data
+  const fetchReservations = async () => {
+    if (!fullNameStr || fullNameStr.includes("Unknown")) return; // Don't fetch if name isn't loaded
+
+    setLoadingReservations(true);
+    const { data, error } = await supabase
+      .from("equipment_reservations")
+      .select("*")
+      .ilike("full_name", `%${fullNameStr.trim()}%`) // Use ilike for safer matching
+      .eq("status", "Pending")
+      .order("reservation_date", { ascending: true });
+
+    if (error) {
+      console.error("Fetch Error:", error);
+    } else {
+      setReservations(data || []);
+    }
+    setLoadingReservations(false);
+  };
+
   useEffect(() => {
     fetchInventory();
     if (fullNameStr) {
       fetchActiveSessions();
+      fetchReservations();
     }
   }, [fullNameStr]);
 
@@ -622,6 +656,61 @@ export default function UserDashboard() {
     }
   };
 
+  // Delete Reservation log
+  const handleDeletePress = (reservation: any) => {
+    setReservationToDelete(reservation);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDeleteReservation = async () => {
+    if (!reservationToDelete) return;
+
+    setIsDeleting(true);
+
+    try {
+      // 1. Get current stock for this equipment
+      // We use the equipment_name from the reservation object
+      const { data: inventoryData, error: fetchError } = await supabase
+        .from("equipment_inventory")
+        .select("id, units")
+        .eq("name", reservationToDelete.equipment_name)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Add 1 back to the stock
+      const { error: updateError } = await supabase
+        .from("equipment_inventory")
+        .update({ units: (inventoryData.units || 0) + 1 })
+        .eq("id", inventoryData.id);
+
+      if (updateError) throw updateError;
+
+      // 3. Delete the reservation log
+      const { error: deleteError } = await supabase
+        .from("equipment_reservations")
+        .delete()
+        .eq("id", reservationToDelete.id);
+
+      if (deleteError) throw deleteError;
+
+      // 4. Success Cleanup
+      setDeleteModalVisible(false);
+      fetchReservations(); // Refresh reservation list
+      fetchInventory(); // Refresh the "Available Equipments" table
+    } catch (error) {
+      console.error("Error during cancellation:", error);
+      setStatusConfig({
+        visible: true,
+        title: "Error",
+        message: "Failed to cancel reservation and update stock.",
+        onCloseOverride: null,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // --- STATS CALCULATIONS ---
   // Calculates the total available units across all equipment
   const totalAvailableStock = inventory.reduce(
@@ -689,6 +778,23 @@ export default function UserDashboard() {
         onClose={closeStatusModal}
       />
 
+      <BookEquipmentModal
+        visible={isBookModalVisible}
+        onClose={() => setBookModalVisible(false)}
+        onSuccess={() => {
+          fetchReservations(); // This is the key! It re-runs the fetch logic
+          fetchInventory(); // Also refresh inventory to show updated stock
+        }}
+        userName={fullNameStr}
+      />
+
+      <DeleteConfirmationModal
+        visible={isDeleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={confirmDeleteReservation}
+        isDeleting={isDeleting}
+        itemName={reservationToDelete?.equipment_name}
+      />
       <View className="flex-1 bg-bgPrimary-light">
         <ScrollView
           className="flex-1"
@@ -1013,130 +1119,102 @@ export default function UserDashboard() {
 
             {/* ======================= RIGHT COLUMN ======================= */}
             <View style={{ flex: isMobile ? undefined : 1, width: "100%" }}>
-              {/* 4. Active Sessions Card */}
+              {/* 4. Active Sessions Card (50% of total top height) */}
               <View
                 style={{
-                  padding: rs(32),
-                  marginBottom: CARD_MARGIN, // Explicitly separate from the Grid below
-                  height: isMobile ? undefined : TOP_SECTION_TOTAL_H,
+                  padding: rs(24),
+                  marginBottom: CARD_MARGIN,
+                  height: isMobile ? undefined : RIGHT_SPLIT_CARD_H,
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
-                <View
-                  style={{
-                    marginBottom: rs(16),
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <View className="flex-row justify-between items-center mb-4">
                   <View
-                    style={{
-                      gap: rs(16),
-                      flexDirection: "row",
-                      alignItems: "center",
-                    }}
+                    className="flex-row items-center"
+                    style={{ gap: rs(12) }}
                   >
-                    <SVG_ICONS.ActiveSessions size={rs(64)} />
-                    <View style={{ gap: rs(6) }}>
+                    <SVG_ICONS.ActiveSessions size={rs(40)} />
+                    <View>
                       <Text
-                        style={{ fontSize: rf(28) }}
+                        style={{ fontSize: rf(20) }}
                         className="font-inter-bold text-textPrimary-light"
                       >
                         Active Sessions
                       </Text>
                       <Text
-                        style={{ fontSize: rf(16) }}
+                        style={{ fontSize: rf(14) }}
                         className="font-inter text-textSecondary-light"
                       >
-                        {activeSessions.length} equipments in use
+                        {activeSessions.length} currently in use
                       </Text>
                     </View>
                   </View>
                   <TouchableOpacity onPress={() => setActiveHelpVisible(true)}>
-                    <Feather name="help-circle" size={rs(24)} color="#1d4ed8" />
+                    <Feather name="help-circle" size={rs(22)} color="#1d4ed8" />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView
-                  style={isMobile ? { maxHeight: rs(400) } : { flex: 1 }}
-                  nestedScrollEnabled={true}
+                  style={{ flex: 1 }}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={true}
                 >
                   {activeSessions.length === 0 ? (
-                    <Text className="font-inter text-gray-500 text-center mt-4">
-                      No active sessions currently.
+                    <Text className="font-inter text-gray-400 text-center mt-4">
+                      No active sessions.
                     </Text>
                   ) : (
                     activeSessions.map((session) => (
                       <View
                         key={session.id}
-                        style={{ padding: rs(16), marginBottom: rs(12) }}
-                        className="bg-gray-200 rounded-xl"
+                        className="bg-gray-50 border border-gray-100 p-3 rounded-lg mb-2"
                       >
-                        {/* 1. Top Row: Equipment Name only */}
-                        <View className="flex-row items-center mb-3">
-                          <MaterialCommunityIcons
-                            name="flask"
-                            size={rs(22)}
-                            color="#1d4ed8"
-                          />
-                          <Text
-                            style={{ fontSize: rf(18) }}
-                            className="font-inter text-textPrimary-light ml-2 font-bold flex-1"
-                            numberOfLines={1}
-                          >
-                            {session.equipment_name}
-                          </Text>
-                        </View>
-
-                        {/* 2. Started Time Badge */}
-                        <View
-                          style={{ padding: rs(10), marginBottom: rs(16) }}
-                          className="bg-white items-center rounded-xl self-start flex-row"
-                        >
-                          <Feather name="clock" size={rs(18)} color="#112747" />
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className="ml-2 font-inter"
-                          >
-                            Started: {session.time_in}
-                          </Text>
-                        </View>
-
-                        {/* 3. Action Buttons Section (Stacked for Mobile) */}
-                        <View style={{ gap: rs(8) }}>
-                          {/* Full-Width QR Code Button */}
-                          <TouchableOpacity
-                            style={{ paddingVertical: rs(12) }}
-                            className="bg-mainColor-light rounded-md items-center justify-center w-full"
-                            onPress={() => handleOpenQRCode(session)}
-                          >
-                            <View className="flex-row items-center">
-                              <MaterialCommunityIcons
-                                name="qrcode"
-                                size={rs(20)}
-                                color="white"
-                              />
-                              <Text
-                                style={{ fontSize: rf(16) }}
-                                className="text-white font-inter-bold ml-2"
-                              >
-                                Generate QR Code
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-
-                          {/* Full-Width Stop Button */}
-                          <TouchableOpacity
-                            style={{ paddingVertical: rs(12) }}
-                            className="bg-red-600 rounded-md items-center justify-center w-full"
-                            onPress={() => handleStopPress(session)}
-                          >
+                        <View className="flex-row justify-between items-start mb-2">
+                          <View style={{ flex: 1 }}>
                             <Text
                               style={{ fontSize: rf(16) }}
+                              className="font-inter-bold text-textPrimary-light"
+                              numberOfLines={1}
+                            >
+                              {session.equipment_name}
+                            </Text>
+                            <Text
+                              style={{ fontSize: rf(12) }}
+                              className="text-textSecondary-light"
+                            >
+                              Started: {session.time_in}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Action Row: QR and Stop */}
+                        <View className="flex-row" style={{ gap: rs(8) }}>
+                          <TouchableOpacity
+                            onPress={() => handleOpenQRCode(session)}
+                            className="flex-1 bg-mainColor-light flex-row items-center justify-center rounded-md py-2"
+                          >
+                            <MaterialCommunityIcons
+                              name="qrcode"
+                              size={rs(16)}
+                              color="white"
+                            />
+                            <Text
+                              style={{ fontSize: rf(12) }}
+                              className="text-white font-inter-bold ml-1"
+                            >
+                              QR Code
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleStopPress(session)}
+                            className="flex-1 bg-red-600 items-center justify-center rounded-md py-2"
+                          >
+                            <Text
+                              style={{ fontSize: rf(12) }}
                               className="text-white font-inter-bold"
                             >
-                              Stop Using Equipment
+                              Stop
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1144,6 +1222,105 @@ export default function UserDashboard() {
                     ))
                   )}
                 </ScrollView>
+              </View>
+
+              {/* 4.5 Equipment Reservations Card (50% of total top height) */}
+              <View
+                style={{
+                  padding: rs(24),
+                  marginBottom: CARD_MARGIN,
+                  height: isMobile ? undefined : RIGHT_SPLIT_CARD_H,
+                }}
+                className="bg-white rounded-lg shadow-sm"
+              >
+                <View
+                  className="flex-row items-center mb-4"
+                  style={{ gap: rs(12) }}
+                >
+                  <MaterialCommunityIcons
+                    name="calendar-clock"
+                    size={rs(40)}
+                    color="#1d4ed8"
+                  />
+                  <View>
+                    <Text
+                      style={{ fontSize: rf(20) }}
+                      className="font-inter-bold text-textPrimary-light"
+                    >
+                      Reservations
+                    </Text>
+                    <Text
+                      style={{ fontSize: rf(14) }}
+                      className="font-inter text-textSecondary-light"
+                    >
+                      {reservations.length} scheduled items
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView
+                  style={{ flex: 1 }}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={true}
+                >
+                  {loadingReservations ? (
+                    <ActivityIndicator size="small" color="#1d4ed8" />
+                  ) : reservations.length === 0 ? (
+                    <Text className="font-inter text-gray-400 text-center mt-4">
+                      No upcoming reservations.
+                    </Text>
+                  ) : (
+                    reservations.map((res) => (
+                      <View
+                        key={res.id}
+                        className="border-l-4 border-blue-500 bg-blue-50/50 p-3 rounded-r-lg mb-3 flex-row justify-between items-center"
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{ fontSize: rf(16) }}
+                            className="font-inter-bold text-textPrimary-light"
+                            numberOfLines={1}
+                          >
+                            {res.equipment_name}
+                          </Text>
+                          <Text
+                            style={{ fontSize: rf(13) }}
+                            className="text-textSecondary-light mt-1"
+                          >
+                            {res.reservation_date} • {res.time_in} -{" "}
+                            {res.time_out}
+                          </Text>
+                        </View>
+
+                        {/* DELETE BUTTON */}
+                        <TouchableOpacity
+                          onPress={() => handleDeletePress(res)}
+                          className="bg-red-50 p-2 rounded-full"
+                        >
+                          <Feather
+                            name="trash-2"
+                            size={rs(18)}
+                            color="#dc2626"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+
+                {/* FIXED BUTTON: Now matches "Start Using Equipment" design */}
+                <TouchableOpacity
+                  style={{ paddingVertical: rs(16), marginTop: rs(16) }}
+                  className="bg-mainColor-light rounded-md items-center justify-center w-full"
+                  onPress={() => setBookModalVisible(true)}
+                >
+                  <Text
+                    style={{ fontSize: rf(18) }}
+                    className="text-white font-inter-bold"
+                  >
+                    Book New Reservation
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* 5. Stats Grid (2x2 Layout) */}
