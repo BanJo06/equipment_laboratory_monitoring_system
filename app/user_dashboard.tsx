@@ -664,50 +664,53 @@ export default function UserDashboard() {
 
   const confirmDeleteReservation = async () => {
     if (!reservationToDelete) return;
-
     setIsDeleting(true);
 
     try {
-      // 1. Get current stock for this equipment
-      // We use the equipment_name from the reservation object
-      const { data: inventoryData, error: fetchError } = await supabase
+      // 1. Fetch current stock to return it
+      const { data: invData } = await supabase
         .from("equipment_inventory")
         .select("id, units")
         .eq("name", reservationToDelete.equipment_name)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (invData) {
+        await supabase
+          .from("equipment_inventory")
+          .update({ units: invData.units + 1 })
+          .eq("id", invData.id);
+      }
 
-      // 2. Add 1 back to the stock
-      const { error: updateError } = await supabase
-        .from("equipment_inventory")
-        .update({ units: (inventoryData.units || 0) + 1 })
-        .eq("id", inventoryData.id);
-
-      if (updateError) throw updateError;
-
-      // 3. Delete the reservation log
-      const { error: deleteError } = await supabase
+      // 2. Delete the log
+      const { error } = await supabase
         .from("equipment_reservations")
         .delete()
         .eq("id", reservationToDelete.id);
 
-      if (deleteError) throw deleteError;
+      if (error) throw error;
 
-      // 4. Success Cleanup
-      setDeleteModalVisible(false);
-      fetchReservations(); // Refresh reservation list
-      fetchInventory(); // Refresh the "Available Equipments" table
-    } catch (error) {
-      console.error("Error during cancellation:", error);
-      setStatusConfig({
+      // SUCCESS MESSAGE
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
-        title: "Error",
-        message: "Failed to cancel reservation and update stock.",
-        onCloseOverride: null,
-      });
+        title: "Reservation Deleted",
+        message: "The reservation has been cancelled and stock was returned.",
+      }));
+
+      fetchReservations(); // Refresh list
+      fetchInventory(); // Refresh stock table
+    } catch (error) {
+      // ERROR MESSAGE
+      setStatusConfig((prev) => ({
+        ...prev,
+        visible: true,
+        title: "Deletion Failed",
+        message:
+          "We couldn't delete the reservation. Please check your connection.",
+      }));
     } finally {
       setIsDeleting(false);
+      setDeleteModalVisible(false);
     }
   };
 

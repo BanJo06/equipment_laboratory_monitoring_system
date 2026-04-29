@@ -110,52 +110,50 @@ export default function BookEquipmentModal({
 
     setIsLoading(true);
 
-    // 2. Insert the Reservation Log
-    const { error: insertError } = await supabase
-      .from("equipment_reservations")
-      .insert([
-        {
-          full_name: userName,
-          equipment_name: selectedEquipment.name,
-          model_name: selectedEquipment.model_name,
-          reservation_date: selectedDate.toISOString().split("T")[0],
-          time_in: timeIn.toUpperCase(),
-          time_out: timeOut.toUpperCase(),
-          status: "Pending",
-        },
-      ]);
+    try {
+      // 1. Insert Reservation
+      const { error: insertError } = await supabase
+        .from("equipment_reservations")
+        .insert([
+          {
+            full_name: userName,
+            equipment_name: selectedEquipment.name,
+            model_name: selectedEquipment.model_name,
+            reservation_date: selectedDate.toISOString().split("T")[0],
+            time_in: timeIn.toUpperCase(),
+            time_out: timeOut.toUpperCase(),
+            status: "Pending",
+          },
+        ]);
 
-    if (insertError) {
-      setIsLoading(false);
-      setStatusConfig({
+      if (insertError) throw insertError;
+
+      // 2. Update Stock
+      const { error: updateError } = await supabase
+        .from("equipment_inventory")
+        .update({ units: selectedEquipment.units - 1 })
+        .eq("id", selectedEquipment.id);
+
+      if (updateError) throw updateError;
+
+      // SUCCESS MESSAGE
+      setStatusConfig((prev) => ({
+        ...prev, // Keeps onCloseOverride: null automatically
+        visible: true,
+        title: "Success",
+        message: "Your reservation has been saved and stock updated!",
+      }));
+    } catch (error) {
+      // ERROR MESSAGE
+      setStatusConfig((prev) => ({
+        ...prev,
         visible: true,
         title: "Error",
-        message: "Failed to save reservation. Please try again.",
-      });
-      return;
+        message: "Something went wrong while saving your reservation.",
+      }));
+    } finally {
+      setIsLoading(false);
     }
-
-    // 3. Deduct the Stock by 1
-    const newStock = selectedEquipment.units - 1;
-    const { error: updateError } = await supabase
-      .from("equipment_inventory")
-      .update({ units: newStock })
-      .eq("id", selectedEquipment.id);
-
-    setIsLoading(false);
-
-    if (updateError) {
-      console.error("Stock update error:", updateError);
-      // Even if stock update fails, the reservation was saved.
-      // You might want to inform the admin or just proceed.
-    }
-
-    // 4. Trigger Success
-    setStatusConfig({
-      visible: true,
-      title: "Success",
-      message: "Reservation saved and equipment stock updated.",
-    });
   };
 
   const handleStatusClose = () => {
