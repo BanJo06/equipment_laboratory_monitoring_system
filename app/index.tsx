@@ -41,7 +41,7 @@ export default function Index() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState<"User" | "Admin" | null>(null);
 
   // --- QR SCANNER STATE ---
   const [permission, requestPermission] = useCameraPermissions();
@@ -161,7 +161,7 @@ export default function Index() {
       return;
     }
 
-    setLoading(true);
+    setAuthLoading(targetRole);
 
     const { data, error: fetchError } = await supabase
       .from("accounts")
@@ -172,7 +172,7 @@ export default function Index() {
       .single();
 
     if (fetchError || !data) {
-      setLoading(false);
+      setAuthLoading(null);
       setModalConfig({
         visible: true,
         title: "Login Failed",
@@ -182,7 +182,7 @@ export default function Index() {
     }
 
     if (data.isOnline) {
-      setLoading(false);
+      setAuthLoading(null);
       setModalConfig({
         visible: true,
         title: "Login Failed",
@@ -196,9 +196,8 @@ export default function Index() {
       .update({ isOnline: true })
       .eq("id", data.id);
 
-    setLoading(false);
-
     if (updateError) {
+      setAuthLoading(null);
       setModalConfig({
         visible: true,
         title: "Error",
@@ -222,6 +221,9 @@ export default function Index() {
         },
       });
     }
+
+    // Reset for future use
+    setAuthLoading(null);
   };
 
   if (!loaded && !error) return null;
@@ -360,30 +362,36 @@ export default function Index() {
           <View style={{ marginHorizontal: 16 }}>
             <View style={{ gap: 16 }}>
               <TouchableOpacity
-                style={{ height: 56, opacity: loading ? 0.7 : 1 }}
+                style={{
+                  height: 56,
+                  opacity: authLoading === "User" ? 0.7 : 1,
+                }}
                 className="w-full rounded-md bg-mainColor-light justify-center items-center"
                 onPress={() => handleAuth("User")}
-                disabled={loading}
+                disabled={authLoading !== null}
               >
                 <Text
                   style={{ fontSize: rf(16) }}
                   className="font-inter-bold text-white"
                 >
-                  {loading ? "Logging In..." : "Log In"}
+                  {authLoading === "User" ? "Logging In..." : "Log In"}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ height: 56, opacity: loading ? 0.7 : 1 }}
+                style={{
+                  height: 56,
+                  opacity: authLoading === "Admin" ? 0.7 : 1,
+                }}
                 className="w-full rounded-md bg-mainColor-light justify-center items-center"
                 onPress={() => handleAuth("Admin")}
-                disabled={loading}
+                disabled={authLoading !== null}
               >
                 <Text
                   style={{ fontSize: rf(16) }}
                   className="font-inter-bold text-white"
                 >
-                  Admin Log In
+                  {authLoading === "Admin" ? "Logging In..." : "Admin Log In"}
                 </Text>
               </TouchableOpacity>
             </View>
