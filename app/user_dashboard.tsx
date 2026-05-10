@@ -1240,11 +1240,7 @@ export default function UserDashboard() {
                   className="flex-row items-center mb-4"
                   style={{ gap: rs(12) }}
                 >
-                  <MaterialCommunityIcons
-                    name="calendar-clock"
-                    size={rs(40)}
-                    color="#1d4ed8"
-                  />
+                  <SVG_ICONS.BookReservation size={rs(40)} />
                   <View>
                     <Text
                       style={{ fontSize: rf(20) }}

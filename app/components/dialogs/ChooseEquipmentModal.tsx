@@ -143,30 +143,65 @@ export default function ChooseEquipmentModal({
             <FlatList
               data={filteredEquipments}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={{ paddingVertical: rs(12) }}
-                  className="flex-row items-center border-b border-[#DADFE5]"
-                  onPress={() => {
-                    onSelect(item);
-                    onClose();
-                  }}
-                >
-                  <Text
-                    style={{ fontSize: rf(14), flex: 3 }}
-                    className="font-inter text-textPrimary-light"
-                    numberOfLines={1}
+              renderItem={({ item }) => {
+                // Logic to check if stock is zero or less
+                const isOutOfStock = item.units <= 0;
+
+                return (
+                  <TouchableOpacity
+                    style={{ paddingVertical: rs(12) }}
+                    // Disable interaction if out of stock
+                    disabled={isOutOfStock}
+                    className={`flex-row items-center border-b border-[#DADFE5] ${
+                      isOutOfStock ? "opacity-50" : "" // Visual feedback: fade the whole row
+                    }`}
+                    onPress={() => {
+                      onSelect(item);
+                      onClose();
+                    }}
                   >
-                    {item.name}
-                  </Text>
-                  <Text
-                    style={{ fontSize: rf(14), flex: 1 }}
-                    className="font-inter text-textPrimary-light text-right"
-                  >
-                    {item.units}
-                  </Text>
-                </TouchableOpacity>
-              )}
+                    <View
+                      style={{
+                        flex: 3,
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: rf(14),
+                          // Change color to gray if out of stock
+                          color: isOutOfStock ? "#94A3B8" : "#112747",
+                        }}
+                        className="font-inter"
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                      {isOutOfStock && (
+                        <Text
+                          style={{ fontSize: rf(10), marginLeft: rs(8) }}
+                          className="text-red-500 font-inter-bold"
+                        >
+                          (OUT)
+                        </Text>
+                      )}
+                    </View>
+
+                    <Text
+                      style={{
+                        fontSize: rf(14),
+                        flex: 1,
+                        // Change color to gray if out of stock
+                        color: isOutOfStock ? "#94A3B8" : "#112747",
+                      }}
+                      className="font-inter text-right"
+                    >
+                      {item.units}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <Text
                   style={{

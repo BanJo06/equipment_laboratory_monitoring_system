@@ -1,6 +1,7 @@
 import AccountsIcon from "../icons/AccountsIcon";
 import ActiveSessionsIcon from "../icons/ActiveSessionsIcon";
 import AnalyticsIcon from "../icons/AnalyticsIcon";
+import BookReservationIcon from "../icons/BookReservationIcon";
 import EquipmentInventoryIcon from "../icons/EquipmentInventoryIcon";
 import LoginIcon from "../icons/LoginIcon";
 import StartSessionIcon from "../icons/StartSessionIcon";
@@ -21,4 +22,5 @@ export const SVG_ICONS: SvgIconMap = {
   UsageHistory: UsageHistoryIcon,
   Analytics: AnalyticsIcon,
   EquipmentInventory: EquipmentInventoryIcon,
+  BookReservation: BookReservationIcon,
 };
