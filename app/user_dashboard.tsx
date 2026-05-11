@@ -33,15 +33,12 @@ export default function UserDashboard() {
   const { width } = useWindowDimensions();
   const router = useRouter();
 
-  // Extract parameters passed from the login screen
   const { id, first_name, last_name } = useLocalSearchParams();
   const fullNameStr = `${first_name || "Unknown"} ${last_name || ""}`.trim();
 
   // Modal state management
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isStopModalVisible, setStopModalVisible] = useState(false);
-  const [selectedSessionToStop, setSelectedSessionToStop] = useState<any>(null);
   const [stopModalConfig, setStopModalConfig] = useState({
     visible: false,
     title: "",
@@ -68,96 +65,141 @@ export default function UserDashboard() {
     onCloseOverride: null as (() => void) | null,
   });
 
-  const updateOnlineStatus = async (status: boolean) => {
-    if (id) {
-      await supabase.from("accounts").update({ isOnline: status }).eq("id", id);
-    }
-  };
-
   // --- IDLE LOGOUT LOGIC ---
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const IDLE_TIME_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
+  const IDLE_TIME_LIMIT = 5 * 60 * 1000;
+  const isInitialMount = useRef(true);
 
-  const forceLogout = async () => {
-    // 1. Update Supabase
-    if (id) {
-      await supabase.from("accounts").update({ isOnline: false }).eq("id", id);
+  // ─────────────────────────────────────────────────────────────────
+  // KEY FIX: updateOnlineStatus only sets to FALSE now.
+  // isOnline is set to TRUE exclusively inside log-in.tsx before
+  // navigation, so there is never a gap where the DB shows false
+  // while the dashboard is already mounted.
+  // ─────────────────────────────────────────────────────────────────
+  const updateOnlineStatus = async (status: boolean) => {
+    if (!id) return;
+    try {
+      console.log(
+        `[Status] DB Sync: Attempting to set isOnline=${status} for ID: ${id}`,
+      );
+      const { data, error } = await supabase
+        .from("accounts")
+        .update({ isOnline: status })
+        .eq("id", id)
+        .select();
+
+      if (error) {
+        console.error(`[Status] DB Error: ${error.message}`);
+      } else {
+        console.log(
+          `[Status] DB Success: isOnline is now ${status}. Affected: ${data?.length}`,
+        );
+      }
+    } catch (err) {
+      console.error("[Status] Unexpected error:", err);
     }
-
-    // 2. Show the specific mandatory alert
-    setStatusConfig({
-      visible: true,
-      title: "Session Expired",
-      message: "You are idle for 5 minutes, it will automatically log-out",
-      onCloseOverride: () => {
-        router.replace("/"); // Redirect after they acknowledge the alert
-      },
-    });
   };
 
-  const resetIdleTimer = () => {
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-    }
+  // Use a ref so the timer callback always calls the latest version
+  // of forceLogout without needing to re-register the timer.
+  const forceLogoutRef = useRef<() => void>(() => {});
 
-    // Using window.setTimeout ensures it's treated as a browser-style timer
-    idleTimerRef.current = setTimeout(forceLogout, IDLE_TIME_LIMIT);
+  useEffect(() => {
+    forceLogoutRef.current = async () => {
+      if (!id) return;
+
+      console.log(
+        `[Idle] 5-minute inactivity threshold reached. Force logging out user: ${id}`,
+      );
+
+      // Clear timer
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+
+      // Update DB
+      await updateOnlineStatus(false);
+
+      // Update UI
+      setStatusConfig({
+        visible: true,
+        title: "Session Expired",
+        message: "Inactivity for 5 minutes detected. You have been logged out.",
+        onCloseOverride: () => router.replace("/"),
+      });
+    };
+  }, [id]);
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    // Always call the ref, not a captured closure, so it's never stale
+    idleTimerRef.current = setTimeout(
+      () => forceLogoutRef.current(),
+      IDLE_TIME_LIMIT,
+    );
   };
 
   useEffect(() => {
-    // 1. SET ONLINE IMMEDIATELY ON MOUNT
+    if (!id) return;
+
+    // Set to TRUE immediately on mount
     updateOnlineStatus(true);
+
+    // Start the idle timer
     resetIdleTimer();
 
-    // 2. MOBILE & GLOBAL STATE LOGIC
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") {
-        updateOnlineStatus(true); // User came back
-        resetIdleTimer();
-      } else {
-        // background or inactive (closing/minimizing)
-        updateOnlineStatus(false);
+    const handleActivity = () => resetIdleTimer();
+    const ACTIVITY_EVENTS = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ] as const;
+
+    // Track activity to prevent idle logout
+    if (Platform.OS === "web") {
+      ACTIVITY_EVENTS.forEach((e) =>
+        window.addEventListener(e, handleActivity, { passive: true }),
+      );
+    }
+
+    // --- THE CHANGE IS HERE ---
+    // We removed AppState and visibilitychange listeners that send 'false'.
+    // We ONLY keep the listeners that confirm we are still active.
+
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        console.log("[Lifecycle] App active, ensuring status is true.");
+        updateOnlineStatus(true);
       }
+      // We do NOT send false here anymore.
     });
 
-    // 3. WEB SPECIFIC LOGIC (Tab Closing/Visibility)
+    const handleBeforeUnload = () => {
+      console.log(
+        "[Lifecycle] Tab/Browser closing. Final attempt to set false.",
+      );
+      updateOnlineStatus(false);
+    };
+
     if (Platform.OS === "web") {
-      const handleVisibilityChange = () => {
-        updateOnlineStatus(document.visibilityState === "visible");
-      };
-
-      // This handles closing the tab or browser entirely
-      const handleBeforeUnload = () => {
-        updateOnlineStatus(false);
-      };
-
-      window.addEventListener("visibilitychange", handleVisibilityChange);
+      // This ONLY fires when the tab is actually closed or refreshed
       window.addEventListener("beforeunload", handleBeforeUnload);
-
-      const events = [
-        "mousedown",
-        "mousemove",
-        "keypress",
-        "scroll",
-        "touchstart",
-      ];
-      events.forEach((event) => window.addEventListener(event, resetIdleTimer));
-
-      return () => {
-        subscription.remove();
-        window.removeEventListener("visibilitychange", handleVisibilityChange);
-        window.removeEventListener("beforeunload", handleBeforeUnload);
-        events.forEach((event) =>
-          window.removeEventListener(event, resetIdleTimer),
-        );
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      };
     }
 
     return () => {
-      subscription.remove();
-      updateOnlineStatus(false); // Clean up on component unmount
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      ACTIVITY_EVENTS.forEach((e) =>
+        window.removeEventListener(e, handleActivity),
+      );
+      appStateSub.remove();
+      if (Platform.OS === "web") {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      }
+      // Optional: Only set to false on a real component unmount
+      updateOnlineStatus(false);
     };
   }, [id]);
 
@@ -182,28 +224,20 @@ export default function UserDashboard() {
     location: string;
   } | null>(null);
 
-  // Time and session states
   const [timeMode, setTimeMode] = useState<"now" | "manual">("now");
   const [manualTime, setManualTime] = useState("");
   const [isStartingSession, setIsStartingSession] = useState(false);
 
-  // Live clock state for durations
   const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Active sessions state
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
-
-  // NEW: Inventory state for the Available Equipments table
   const [inventory, setInventory] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
 
-  // --- DELETION STATES ---
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [reservationToDelete, setReservationToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // --- RESPONSIVE MATH ---
   const isMobile = width < 1024;
   const desktopScale = Math.min(width / 1440, 1);
   const mobileScale = Math.min(width / 430, 1);
@@ -211,20 +245,13 @@ export default function UserDashboard() {
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
-  // --- HEIGHT & SPACING CONSTANTS ---
   const CARD_MARGIN = rs(24);
   const HEADER_H = rs(140);
   const START_SESSION_H = rs(452);
-
-  // Align Right Column cards to match Left Column heights
   const TOTAL_TOP_HEIGHT = HEADER_H + CARD_MARGIN + START_SESSION_H;
-  // (Total Height - Middle Margin) / 2 = Equal height for both cards
   const RIGHT_SPLIT_CARD_H = (TOTAL_TOP_HEIGHT - CARD_MARGIN) / 2;
-
   const DESKTOP_INVENTORY_H = rs(260);
   const STAT_CARD_H = (DESKTOP_INVENTORY_H - CARD_MARGIN) / 2;
-
-  // Internal Scroll Area Height
   const TABLE_SCROLL_H = isMobile ? rs(200) : rs(120);
 
   useEffect(() => {
@@ -234,35 +261,16 @@ export default function UserDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Helper function to calculate elapsed time
-  // This code is for live time duration text (ex: 00:05:00)
-  // const getDuration = (startTimeString: string) => {
-  //   const start = new Date(startTimeString).getTime();
-  //   const current = currentTime.getTime();
-  //   const diff = Math.max(0, current - start); // Prevent negative time
-
-  //   const hours = Math.floor(diff / (1000 * 60 * 60));
-  //   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  //   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  //   const pad = (num: number) => num.toString().padStart(2, "0");
-  //   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  // };
-
   const parseDateTime = (dateStr: string, timeStr: string) => {
-    // dateStr is "YYYY-MM-DD", timeStr is "hh:mm AM/PM"
     const [time, modifier] = timeStr.split(" ");
     let [hours, minutes] = time.split(":").map(Number);
-
     if (modifier?.toLowerCase() === "pm" && hours < 12) hours += 12;
     if (modifier?.toLowerCase() === "am" && hours === 12) hours = 0;
-
     const date = new Date(dateStr);
     date.setHours(hours, minutes, 0, 0);
     return date.getTime();
   };
 
-  // --- DATA FETCHING ---
   const fetchActiveSessions = async () => {
     const { data, error } = await supabase
       .from("equipment_logs")
@@ -270,12 +278,8 @@ export default function UserDashboard() {
       .eq("full_name", fullNameStr)
       .eq("status", "In Use")
       .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setActiveSessions(data);
-    } else if (error) {
-      console.error("Error fetching active sessions:", error);
-    }
+    if (!error && data) setActiveSessions(data);
+    else if (error) console.error("Error fetching active sessions:", error);
   };
 
   const fetchInventory = async () => {
@@ -284,32 +288,22 @@ export default function UserDashboard() {
       .from("equipment_inventory")
       .select("*")
       .order("name", { ascending: true });
-
-    if (!error && data) {
-      setInventory(data);
-    } else if (error) {
-      console.error("Error fetching inventory:", error);
-    }
+    if (!error && data) setInventory(data);
+    else if (error) console.error("Error fetching inventory:", error);
     setLoadingInventory(false);
   };
 
-  //Fetch Reservations Fetch data
   const fetchReservations = async () => {
-    if (!fullNameStr || fullNameStr.includes("Unknown")) return; // Don't fetch if name isn't loaded
-
+    if (!fullNameStr || fullNameStr.includes("Unknown")) return;
     setLoadingReservations(true);
     const { data, error } = await supabase
       .from("equipment_reservations")
       .select("*")
-      .ilike("full_name", `%${fullNameStr.trim()}%`) // Use ilike for safer matching
+      .ilike("full_name", `%${fullNameStr.trim()}%`)
       .eq("status", "Pending")
-      .order("reservation_date", { ascending: true });
-
-    if (error) {
-      console.error("Fetch Error:", error);
-    } else {
-      setReservations(data || []);
-    }
+      .order("date_from", { ascending: true });
+    if (error) console.error("Fetch Error:", error);
+    else setReservations(data || []);
     setLoadingReservations(false);
   };
 
@@ -321,15 +315,11 @@ export default function UserDashboard() {
     }
   }, [fullNameStr]);
 
-  // --- ACTIONS ---
   const handleLogoutPress = () => setLogoutModalVisible(true);
 
   const confirmLogout = async () => {
-    // Start the loading state
     setIsLoggingOut(true);
-
     try {
-      // 1. Attempt the database update
       if (id) {
         await supabase
           .from("accounts")
@@ -337,11 +327,8 @@ export default function UserDashboard() {
           .eq("id", id);
       }
     } catch (error) {
-      // 2. If the internet fails or Supabase throws an error, log it here
       console.error("Error during logout:", error);
     } finally {
-      // 3. This runs NO MATTER WHAT (success or error)
-      // It prevents the user from being "stuck" on a loading spinner
       setIsLoggingOut(false);
       setLogoutModalVisible(false);
       router.replace("/");
@@ -353,7 +340,7 @@ export default function UserDashboard() {
       id: session.id,
       equipment_name: session.equipment_name,
       model_name: session.model_name || "N/A",
-      location: session.location || "designated area", // Or session.location if available in DB
+      location: session.location || "designated area",
     });
     setQrModalVisible(true);
   };
@@ -361,7 +348,6 @@ export default function UserDashboard() {
   const handleStartSession = async () => {
     if (timeMode === "manual") {
       const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(am|pm|AM|PM)$/;
-
       if (!manualTime.trim()) {
         setStatusConfig((prev) => ({
           ...prev,
@@ -371,7 +357,6 @@ export default function UserDashboard() {
         }));
         return;
       }
-
       if (!timeRegex.test(manualTime.trim())) {
         setStatusConfig((prev) => ({
           ...prev,
@@ -404,16 +389,6 @@ export default function UserDashboard() {
       return;
     }
 
-    if (timeMode === "manual" && !manualTime.trim()) {
-      setStatusConfig((prev) => ({
-        ...prev,
-        visible: true,
-        title: "Error",
-        message: "Please enter a manual time.",
-      }));
-      return;
-    }
-
     setIsStartingSession(true);
 
     const currentDate = new Date().toISOString().split("T")[0];
@@ -425,7 +400,6 @@ export default function UserDashboard() {
           })
         : manualTime;
 
-    // Insert log
     const { error: insertError } = await supabase
       .from("equipment_logs")
       .insert([
@@ -452,7 +426,6 @@ export default function UserDashboard() {
       return;
     }
 
-    // Decrease stock
     const newStock = selectedEquipment.units - 1;
     await supabase
       .from("equipment_inventory")
@@ -501,22 +474,16 @@ export default function UserDashboard() {
 
   const confirmStopAction = async () => {
     const { mode, session } = stopModalConfig;
-
-    // Close modal first
     setStopModalConfig((prev) => ({ ...prev, visible: false }));
-
     if (mode === "cancel") {
-      // Use your existing cancel logic which deletes the log
       await handleCancelSession(session);
     } else {
-      // Use your normal stop logic which updates the log
       await handleStopSession(session);
     }
   };
 
   const handleStopSession = async (session: any) => {
     setIsStoppingSession(true);
-
     const timeOut = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -528,13 +495,12 @@ export default function UserDashboard() {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const finalDuration = `${hours}H ${minutes}M`;
 
-    // Update log out time AND status to completed
     const { error } = await supabase
       .from("equipment_logs")
       .update({
         time_out: timeOut,
         duration: finalDuration,
-        status: "Completed", // NEW
+        status: "Completed",
       })
       .eq("id", session.id);
 
@@ -551,14 +517,12 @@ export default function UserDashboard() {
     }
 
     await returnEquipmentStock(session.equipment_name);
-
     setStatusConfig((prev) => ({
       ...prev,
       visible: true,
       title: "Session Stopped",
       message: "The session has been successfully stopped and recorded.",
     }));
-
     fetchActiveSessions();
     fetchInventory();
     setIsStoppingSession(false);
@@ -566,28 +530,22 @@ export default function UserDashboard() {
 
   const handleCancelSession = async (session: any) => {
     setIsStoppingSession(true);
-
-    // 1. Calculate the elapsed time in minutes
     const start = parseDateTime(session.date, session.time_in);
     const current = new Date().getTime();
     const diffInMs = Math.max(0, current - start);
     const diffInMinutes = diffInMs / (1000 * 60);
-
     let statusTitle = "";
     let statusMsg = "";
 
     try {
       if (diffInMinutes >= 2) {
-        // --- CASE A: 2+ minutes elapsed -> Mark as Completed ---
         const timeOut = new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
-
         const hours = Math.floor(diffInMinutes / 60);
         const minutes = Math.floor(diffInMinutes % 60);
         const finalDuration = `${hours}H ${minutes}M`;
-
         const { error } = await supabase
           .from("equipment_logs")
           .update({
@@ -596,29 +554,21 @@ export default function UserDashboard() {
             status: "completed",
           })
           .eq("id", session.id);
-
         if (error) throw error;
-
         statusTitle = "Session Completed";
         statusMsg =
           "Usage exceeded 2 minutes. Log has been marked as completed.";
       } else {
-        // --- CASE B: Less than 2 minutes -> Delete/Remove Log ---
         const { error } = await supabase
           .from("equipment_logs")
           .delete()
           .eq("id", session.id);
-
         if (error) throw error;
-
         statusTitle = "Log Removed";
         statusMsg =
           "Session cancelled within 2 minutes. The log was not recorded.";
       }
-
-      // Common Cleanup: Return stock and refresh UI
       await returnEquipmentStock(session.equipment_name);
-
       setStatusConfig((prev) => ({
         ...prev,
         visible: true,
@@ -641,13 +591,11 @@ export default function UserDashboard() {
   };
 
   const returnEquipmentStock = async (equipmentName: string) => {
-    // We no longer need to split the string!
     const { data: eqData } = await supabase
       .from("equipment_inventory")
       .select("units")
       .eq("name", equipmentName)
       .single();
-
     if (eqData) {
       await supabase
         .from("equipment_inventory")
@@ -656,7 +604,6 @@ export default function UserDashboard() {
     }
   };
 
-  // Delete Reservation log
   const handleDeletePress = (reservation: any) => {
     setReservationToDelete(reservation);
     setDeleteModalVisible(true);
@@ -665,42 +612,32 @@ export default function UserDashboard() {
   const confirmDeleteReservation = async () => {
     if (!reservationToDelete) return;
     setIsDeleting(true);
-
     try {
-      // 1. Fetch current stock to return it
       const { data: invData } = await supabase
         .from("equipment_inventory")
         .select("id, units")
         .eq("name", reservationToDelete.equipment_name)
         .single();
-
       if (invData) {
         await supabase
           .from("equipment_inventory")
           .update({ units: invData.units + 1 })
           .eq("id", invData.id);
       }
-
-      // 2. Delete the log
       const { error } = await supabase
         .from("equipment_reservations")
         .delete()
         .eq("id", reservationToDelete.id);
-
       if (error) throw error;
-
-      // SUCCESS MESSAGE
       setStatusConfig((prev) => ({
         ...prev,
         visible: true,
         title: "Reservation Deleted",
         message: "The reservation has been cancelled and stock was returned.",
       }));
-
-      fetchReservations(); // Refresh list
-      fetchInventory(); // Refresh stock table
+      fetchReservations();
+      fetchInventory();
     } catch (error) {
-      // ERROR MESSAGE
       setStatusConfig((prev) => ({
         ...prev,
         visible: true,
@@ -714,14 +651,11 @@ export default function UserDashboard() {
     }
   };
 
-  // --- STATS CALCULATIONS ---
-  // Calculates the total available units across all equipment
   const totalAvailableStock = inventory.reduce(
     (total, item) => total + item.units,
     0,
   );
 
-  // Formats the live clock to include the day of the week, date, and time
   const liveDateTime = currentTime.toLocaleString("en-US", {
     weekday: "long",
     month: "short",
@@ -732,7 +666,6 @@ export default function UserDashboard() {
     second: "2-digit",
   });
 
-  // --- RENDER ---
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -742,19 +675,16 @@ export default function UserDashboard() {
         onConfirm={confirmLogout}
         isLoggingOut={isLoggingOut}
       />
-
       <ChooseEquipmentModal
         visible={isEquipmentModalVisible}
         onClose={() => setEquipmentModalVisible(false)}
         onSelect={(equipment) => setSelectedEquipment(equipment)}
       />
-
       <QRCodeModal
         visible={qrModalVisible}
         onClose={() => setQrModalVisible(false)}
         sessionData={qrSessionData}
       />
-
       <StopSessionConfirmationModal
         visible={stopModalConfig.visible}
         title={stopModalConfig.title}
@@ -765,7 +695,6 @@ export default function UserDashboard() {
         onConfirm={confirmStopAction}
         isStopping={isStoppingSession}
       />
-
       <StartSessionHelpModal
         visible={startHelpVisible}
         onClose={() => setStartHelpVisible(false)}
@@ -780,17 +709,15 @@ export default function UserDashboard() {
         message={statusConfig.message}
         onClose={closeStatusModal}
       />
-
       <BookEquipmentModal
         visible={isBookModalVisible}
         onClose={() => setBookModalVisible(false)}
         onSuccess={() => {
-          fetchReservations(); // This is the key! It re-runs the fetch logic
-          fetchInventory(); // Also refresh inventory to show updated stock
+          fetchReservations();
+          fetchInventory();
         }}
         userName={fullNameStr}
       />
-
       <DeleteConfirmationModal
         visible={isDeleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}
@@ -798,6 +725,7 @@ export default function UserDashboard() {
         isDeleting={isDeleting}
         itemName={reservationToDelete?.equipment_name}
       />
+
       <View className="flex-1 bg-bgPrimary-light">
         <ScrollView
           className="flex-1"
@@ -814,9 +742,9 @@ export default function UserDashboard() {
               width: "100%",
             }}
           >
-            {/* ======================= LEFT COLUMN ======================= */}
+            {/* LEFT COLUMN */}
             <View style={{ flex: isMobile ? undefined : 1, width: "100%" }}>
-              {/* 1. Header Card */}
+              {/* Header Card */}
               <View
                 style={{
                   padding: rs(32),
@@ -856,7 +784,7 @@ export default function UserDashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* 2. Start Session Card */}
+              {/* Start Session Card */}
               <View
                 style={{
                   padding: rs(32),
@@ -865,7 +793,6 @@ export default function UserDashboard() {
                 }}
                 className="bg-white rounded-lg shadow-sm"
               >
-                {/* Header Section */}
                 <View
                   style={{
                     marginBottom: rs(16),
@@ -902,7 +829,6 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Select Equipment */}
                 <View style={{ marginBottom: rs(16) }}>
                   <View className="flex-row items-center mb-1">
                     <FontAwesome5
@@ -935,7 +861,6 @@ export default function UserDashboard() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Start Time */}
                 <View
                   style={{ marginBottom: rs(24), padding: rs(16) }}
                   className="bg-[#DADFE5] rounded-[10px]"
@@ -1031,7 +956,7 @@ export default function UserDashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Available Equipments Card */}
+              {/* Available Equipments Card */}
               <View
                 style={{
                   padding: rs(32),
@@ -1047,8 +972,6 @@ export default function UserDashboard() {
                 >
                   Available Equipments
                 </Text>
-
-                {/* Table Header */}
                 <View
                   style={{ paddingBottom: rs(8), marginBottom: rs(8) }}
                   className="flex-row border-b border-[#6684B0]"
@@ -1072,8 +995,6 @@ export default function UserDashboard() {
                     Status
                   </Text>
                 </View>
-
-                {/* Scrollable list Area */}
                 <View style={{ height: TABLE_SCROLL_H, overflow: "hidden" }}>
                   <ScrollView
                     nestedScrollEnabled={true}
@@ -1120,9 +1041,9 @@ export default function UserDashboard() {
               </View>
             </View>
 
-            {/* ======================= RIGHT COLUMN ======================= */}
+            {/* RIGHT COLUMN */}
             <View style={{ flex: isMobile ? undefined : 1, width: "100%" }}>
-              {/* 4. Active Sessions Card (50% of total top height) */}
+              {/* Active Sessions Card */}
               <View
                 style={{
                   padding: rs(24),
@@ -1156,7 +1077,6 @@ export default function UserDashboard() {
                     <Feather name="help-circle" size={rs(22)} color="#1d4ed8" />
                   </TouchableOpacity>
                 </View>
-
                 <ScrollView
                   style={{ flex: 1 }}
                   nestedScrollEnabled
@@ -1189,8 +1109,6 @@ export default function UserDashboard() {
                             </Text>
                           </View>
                         </View>
-
-                        {/* Action Row: QR and Stop */}
                         <View className="flex-row" style={{ gap: rs(8) }}>
                           <TouchableOpacity
                             onPress={() => handleOpenQRCode(session)}
@@ -1208,7 +1126,6 @@ export default function UserDashboard() {
                               QR Code
                             </Text>
                           </TouchableOpacity>
-
                           <TouchableOpacity
                             onPress={() => handleStopPress(session)}
                             className="flex-1 bg-red-600 items-center justify-center rounded-md py-2"
@@ -1227,7 +1144,7 @@ export default function UserDashboard() {
                 </ScrollView>
               </View>
 
-              {/* 4.5 Equipment Reservations Card (50% of total top height) */}
+              {/* Reservations Card */}
               <View
                 style={{
                   padding: rs(24),
@@ -1256,7 +1173,6 @@ export default function UserDashboard() {
                     </Text>
                   </View>
                 </View>
-
                 <ScrollView
                   style={{ flex: 1 }}
                   nestedScrollEnabled
@@ -1282,16 +1198,23 @@ export default function UserDashboard() {
                           >
                             {res.equipment_name}
                           </Text>
-                          <Text
-                            style={{ fontSize: rf(13) }}
-                            className="text-textSecondary-light mt-1"
-                          >
-                            {res.reservation_date} • {res.time_in} -{" "}
-                            {res.time_out}
-                          </Text>
+                          <View className="mt-1">
+                            <Text
+                              style={{ fontSize: rf(12) }}
+                              className="text-textPrimary-light font-inter-bold"
+                            >
+                              {res.date_from === res.date_to
+                                ? res.date_from
+                                : `${res.date_from} to ${res.date_to}`}
+                            </Text>
+                            <Text
+                              style={{ fontSize: rf(12) }}
+                              className="text-textSecondary-light"
+                            >
+                              {res.time_in} - {res.time_out}
+                            </Text>
+                          </View>
                         </View>
-
-                        {/* DELETE BUTTON */}
                         <TouchableOpacity
                           onPress={() => handleDeletePress(res)}
                           className="bg-red-50 p-2 rounded-full"
@@ -1306,8 +1229,6 @@ export default function UserDashboard() {
                     ))
                   )}
                 </ScrollView>
-
-                {/* FIXED BUTTON: Now matches "Start Using Equipment" design */}
                 <TouchableOpacity
                   style={{ paddingVertical: rs(16), marginTop: rs(16) }}
                   className="bg-mainColor-light rounded-md items-center justify-center w-full"
@@ -1322,7 +1243,7 @@ export default function UserDashboard() {
                 </TouchableOpacity>
               </View>
 
-              {/* 5. Stats Grid (2x2 Layout) */}
+              {/* Stats Grid */}
               <View
                 style={{
                   flexDirection: "row",

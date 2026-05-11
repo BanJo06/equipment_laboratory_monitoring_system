@@ -42,6 +42,11 @@ export default function BookEquipmentModal({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [timeIn, setTimeIn] = useState("");
   const [timeOut, setTimeOut] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [activePicker, setActivePicker] = useState<"start" | "end" | null>(
+    null,
+  );
 
   // --- Feedback States ---
   const [statusConfig, setStatusConfig] = useState({
@@ -78,7 +83,8 @@ export default function BookEquipmentModal({
   const resetForm = () => {
     setSearchQuery("");
     setSelectedEquipment(null);
-    setSelectedDate(null);
+    setStartDate(null);
+    setEndDate(null);
     setTimeIn("");
     setTimeOut("");
   };
@@ -89,11 +95,21 @@ export default function BookEquipmentModal({
 
   const handleSaveReservation = async () => {
     // 1. Validation
-    if (!selectedEquipment || !selectedDate || !timeIn || !timeOut) {
+    if (!selectedEquipment || !startDate || !endDate || !timeIn || !timeOut) {
       setStatusConfig({
         visible: true,
         title: "Error",
-        message: "Please fill in all fields before booking.",
+        message:
+          "Please fill in all fields (including both dates) before booking.",
+      });
+      return;
+    }
+
+    if (endDate < startDate) {
+      setStatusConfig({
+        visible: true,
+        title: "Invalid Dates",
+        message: "The 'Date To' cannot be earlier than 'Date From'.",
       });
       return;
     }
@@ -119,7 +135,8 @@ export default function BookEquipmentModal({
             full_name: userName,
             equipment_name: selectedEquipment.name,
             model_name: selectedEquipment.model_name,
-            reservation_date: selectedDate.toISOString().split("T")[0],
+            date_from: startDate.toISOString().split("T")[0],
+            date_to: endDate.toISOString().split("T")[0],
             time_in: timeIn.toUpperCase(),
             time_out: timeOut.toUpperCase(),
             status: "Pending",
@@ -258,25 +275,59 @@ export default function BookEquipmentModal({
               )}
             </View>
 
-            {/* 2. Selected Date */}
+            {/* 2. Reservation Dates (From & To) */}
             <Text
               style={{ fontSize: rf(14) }}
               className="font-inter-bold text-textPrimary-light mt-4 mb-2"
             >
-              Reservation Date
+              Reservation Period
             </Text>
-            <TouchableOpacity
-              onPress={() => setIsDatePickerVisible(true)}
-              className="flex-row items-center border border-gray-300 rounded-lg p-3 bg-gray-50"
-            >
-              <Feather name="calendar" size={rs(18)} color="#1d4ed8" />
-              <Text
-                style={{ fontSize: rf(16), marginLeft: rs(10) }}
-                className="font-inter text-textPrimary-light"
+
+            <View className="flex-row" style={{ gap: rs(12) }}>
+              {/* Date From */}
+              <TouchableOpacity
+                onPress={() => setActivePicker("start")}
+                className="flex-1 flex-row items-center border border-gray-300 rounded-lg p-3 bg-gray-50"
               >
-                {selectedDate ? selectedDate.toDateString() : "Select a date"}
-              </Text>
-            </TouchableOpacity>
+                <Feather name="calendar" size={rs(16)} color="#1d4ed8" />
+                <View className="ml-2">
+                  <Text
+                    style={{ fontSize: rf(10) }}
+                    className="text-gray-500 font-inter"
+                  >
+                    From
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(14) }}
+                    className="font-inter text-textPrimary-light"
+                  >
+                    {startDate ? startDate.toLocaleDateString() : "Select"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Date To */}
+              <TouchableOpacity
+                onPress={() => setActivePicker("end")}
+                className="flex-1 flex-row items-center border border-gray-300 rounded-lg p-3 bg-gray-50"
+              >
+                <Feather name="calendar" size={rs(16)} color="#1d4ed8" />
+                <View className="ml-2">
+                  <Text
+                    style={{ fontSize: rf(10) }}
+                    className="text-gray-500 font-inter"
+                  >
+                    To
+                  </Text>
+                  <Text
+                    style={{ fontSize: rf(14) }}
+                    className="font-inter text-textPrimary-light"
+                  >
+                    {endDate ? endDate.toLocaleDateString() : "Select"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
 
             {/* 3. Time Inputs */}
             <View className="flex-row mt-4" style={{ gap: rs(16) }}>
@@ -339,10 +390,17 @@ export default function BookEquipmentModal({
 
         {/* Support Modals */}
         <DatePickerModal
-          visible={isDatePickerVisible}
-          onClose={() => setIsDatePickerVisible(false)}
-          onSelect={(date) => setSelectedDate(date)}
-          initialDate={selectedDate}
+          visible={activePicker !== null}
+          onClose={() => setActivePicker(null)}
+          onSelect={(date) => {
+            if (activePicker === "start") {
+              setStartDate(date);
+            } else {
+              setEndDate(date);
+            }
+            setActivePicker(null);
+          }}
+          initialDate={activePicker === "start" ? startDate : endDate}
         />
 
         <StatusModal

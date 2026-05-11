@@ -27,7 +27,6 @@ export default function Index() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // --- RESPONSIVE MATH ---
   const isMobile = width < 768;
   const isSmallPhone = width < 440;
 
@@ -43,12 +42,10 @@ export default function Index() {
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState<"User" | "Admin" | null>(null);
 
-  // --- QR SCANNER STATE ---
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessingQR, setIsProcessingQR] = useState(false);
 
-  // Modal State Management
   const [modalConfig, setModalConfig] = useState({
     visible: false,
     title: "",
@@ -63,7 +60,6 @@ export default function Index() {
     }
   }, [loaded, error]);
 
-  // --- QR LOGOUT PROCESS ---
   const openScanner = async () => {
     if (!permission?.granted) {
       const { granted } = await requestPermission();
@@ -150,80 +146,92 @@ export default function Index() {
     }
   };
 
-  // --- UNIFIED AUTHENTICATION ---
   const handleAuth = async (targetRole: "User" | "Admin") => {
     if (!username || !password) {
       setModalConfig({
         visible: true,
         title: "Error",
-        message: "Please enter both username and password.",
+        message: "Missing credentials.",
       });
       return;
     }
 
+    console.log(
+      `[Auth] Attempting login for username: ${username} as ${targetRole}`,
+    );
     setAuthLoading(targetRole);
 
-    const { data, error: fetchError } = await supabase
-      .from("accounts")
-      .select("*")
-      .eq("username", username)
-      .eq("password", password)
-      .eq("role", targetRole)
-      .single();
+    try {
+      // 1. Fetch account
+      const { data: account, error: fetchError } = await supabase
+        .from("accounts")
+        .select("*")
+        .eq("username", username)
+        .eq("password", password)
+        .eq("role", targetRole)
+        .single();
 
-    if (fetchError || !data) {
-      setAuthLoading(null);
-      setModalConfig({
-        visible: true,
-        title: "Login Failed",
-        message: `Incorrect credentials for ${targetRole} access.`,
-      });
-      return;
-    }
+      if (fetchError || !account) {
+        console.log(
+          `[Auth] Login failed for ${username}: Invalid credentials.`,
+        );
+        setAuthLoading(null);
+        setModalConfig({
+          visible: true,
+          title: "Login Failed",
+          message: "Invalid username or password.",
+        });
+        return;
+      }
 
-    if (data.isOnline) {
-      setAuthLoading(null);
-      setModalConfig({
-        visible: true,
-        title: "Login Failed",
-        message: "The account is already logged in.",
-      });
-      return;
-    }
+      // 2. Check current online status (prevent duplicates)
+      const { data: freshAccount } = await supabase
+        .from("accounts")
+        .select("isOnline")
+        .eq("id", account.id)
+        .single();
 
-    const { error: updateError } = await supabase
-      .from("accounts")
-      .update({ isOnline: true })
-      .eq("id", data.id);
+      if (freshAccount?.isOnline === true) {
+        console.log(
+          `[Auth] Blocked login for ID: ${account.id}. Account is already online.`,
+        );
+        setAuthLoading(null);
+        setModalConfig({
+          visible: true,
+          title: "Access Denied",
+          message: "This account is already logged in on another session.",
+        });
+        return;
+      }
 
-    if (updateError) {
-      setAuthLoading(null);
-      setModalConfig({
-        visible: true,
-        title: "Error",
-        message: "Failed to update online status.",
-      });
-      return;
-    }
+      // 3. Set isOnline to TRUE
+      console.log(
+        `[Auth] Success. Setting isOnline=true for Account ID: ${account.id}`,
+      );
+      const { error: updateError } = await supabase
+        .from("accounts")
+        .update({ isOnline: true })
+        .eq("id", account.id);
 
-    if (targetRole === "Admin") {
-      router.push({
-        pathname: "/admin_dashboard",
-        params: { id: data.id },
-      });
-    } else {
-      router.push({
-        pathname: "/user_dashboard",
+      if (updateError) {
+        throw new Error("Failed to update session status.");
+      }
+
+      // 4. Navigate
+      router.replace({
+        pathname:
+          targetRole === "Admin" ? "/admin_dashboard" : "/user_dashboard",
         params: {
-          id: data.id,
-          first_name: data.first_name,
-          last_name: data.last_name,
+          id: account.id,
+          first_name: account.first_name,
+          last_name: account.last_name,
         },
       });
+    } catch (err: any) {
+      console.error(`[Auth] Unexpected error: ${err.message}`);
+      setAuthLoading(null);
+      setModalConfig({ visible: true, title: "Error", message: err.message });
     }
-
-    // Reset for future use
-    setAuthLoading(null);
   };
 
   if (!loaded && !error) return null;
