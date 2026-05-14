@@ -14,6 +14,7 @@ interface DatePickerModalProps {
   onClose: () => void;
   onSelect: (date: Date) => void;
   initialDate?: Date | null;
+  activePicker: "start" | "end" | null;
 }
 
 export default function DatePickerModal({
@@ -21,6 +22,7 @@ export default function DatePickerModal({
   onClose,
   onSelect,
   initialDate,
+  activePicker,
 }: DatePickerModalProps) {
   const { width } = useWindowDimensions();
 
@@ -216,55 +218,82 @@ export default function DatePickerModal({
               {/* DAYS GRID */}
               <View className="flex-row flex-wrap">
                 {daysArray.map((day, index) => {
+                  // 1. We move the date logic inside the 'day ?' block
+                  // to prevent errors on the null padding days.
+                  if (!day) {
+                    return (
+                      <View
+                        key={index}
+                        style={{ width: "14.28%", aspectRatio: 1 }}
+                      />
+                    );
+                  }
+
+                  const dateToCompare = new Date(
+                    currentYear,
+                    currentMonth,
+                    day,
+                  );
+                  dateToCompare.setHours(0, 0, 0, 0);
+
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+
+                  // 2. Logic Checks
                   const isSelected =
                     initialDate &&
                     day === initialDate.getDate() &&
                     currentMonth === initialDate.getMonth() &&
                     currentYear === initialDate.getFullYear();
 
-                  const isToday =
-                    day === new Date().getDate() &&
-                    currentMonth === new Date().getMonth() &&
-                    currentYear === new Date().getFullYear();
+                  const isPast = dateToCompare.getTime() < today.getTime();
+                  const isToday = dateToCompare.getTime() === today.getTime();
+
+                  // 3. Determine if the day should be interactive
+                  // Start picker: only today. End picker: today or future.
+                  const isAllowed =
+                    activePicker === "start" ? isToday : !isPast;
 
                   return (
                     <View
                       key={index}
                       style={{
-                        width: "14.28%", // 100% / 7 columns
+                        width: "14.28%",
                         aspectRatio: 1,
                         padding: rs(2),
                       }}
                     >
-                      {day ? (
-                        <TouchableOpacity
-                          onPress={() => handleDaySelect(day)}
-                          style={{
-                            flex: 1,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            borderRadius: 100,
-                            backgroundColor: isSelected
-                              ? "#1d4ed8"
-                              : "transparent",
-                            borderWidth: isToday && !isSelected ? 1 : 0,
-                            borderColor: "#1d4ed8",
-                          }}
+                      <TouchableOpacity
+                        onPress={() => handleDaySelect(day)}
+                        // 4. Physical disable: Prevents clicking even if they ignore the opacity
+                        disabled={!isAllowed}
+                        style={{
+                          flex: 1,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderRadius: 100,
+                          backgroundColor: isSelected
+                            ? "#1d4ed8"
+                            : "transparent",
+                          borderWidth: isToday && !isSelected ? 1 : 0,
+                          borderColor: "#1d4ed8",
+                          // 5. Visual cue: Dim disallowed days
+                          opacity: isAllowed ? 1 : 0.3,
+                        }}
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className={`font-inter ${
+                            isSelected
+                              ? "text-white font-inter-bold"
+                              : isToday
+                                ? "text-blue-700 font-inter-bold"
+                                : "text-textPrimary-light"
+                          }`}
                         >
-                          <Text
-                            style={{ fontSize: rf(14) }}
-                            className={`font-inter ${
-                              isSelected
-                                ? "text-white font-inter-bold"
-                                : isToday
-                                  ? "text-blue-700 font-inter-bold"
-                                  : "text-textPrimary-light"
-                            }`}
-                          >
-                            {day}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : null}
+                          {day}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   );
                 })}

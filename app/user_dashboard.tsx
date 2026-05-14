@@ -254,21 +254,167 @@ export default function UserDashboard() {
   const STAT_CARD_H = (DESKTOP_INVENTORY_H - CARD_MARGIN) / 2;
   const TABLE_SCROLL_H = isMobile ? rs(200) : rs(120);
 
+  const getFormattedDuration = (startTime: number, endTime: number) => {
+    const diff = Math.max(0, endTime - startTime);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}H ${minutes}M`;
+  };
+
+  // useEffect(() => {
+  //   const timer = setInterval(() => {
+  //     setCurrentTime(new Date());
+  //   }, 1000);
+  //   return () => clearInterval(timer);
+  // }, []);
+
+  // useEffect(() => {
+  //   const timer = setInterval(() => {
+  //     const now = new Date();
+  //     setCurrentTime(now);
+
+  //     // Trigger sync every minute (when seconds are 0)
+  //     // to prevent excessive DB calls while maintaining accuracy
+  //     if (now.getSeconds() === 0) {
+  //       syncReservationsWithLogs();
+  //     }
+  //   }, 1000);
+  //   return () => clearInterval(timer);
+  // }, [reservations]); // Add reservations as dependency
+
+  const lastSyncRef = useRef<number>(0);
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      const now = new Date();
+      setCurrentTime(now);
+
+      // Sync if it's been more than 30 seconds since the last check
+      if (now.getTime() - lastSyncRef.current > 30000) {
+        syncReservationsWithLogs();
+        lastSyncRef.current = now.getTime();
+      }
     }, 1000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [reservations]);
+
+  // const parseDateTime = (dateStr: string, timeStr: string) => {
+  //   const [time, modifier] = timeStr.split(" ");
+  //   let [hours, minutes] = time.split(":").map(Number);
+  //   if (modifier?.toLowerCase() === "pm" && hours < 12) hours += 12;
+  //   if (modifier?.toLowerCase() === "am" && hours === 12) hours = 0;
+  //   const date = new Date(dateStr);
+  //   date.setHours(hours, minutes, 0, 0);
+  //   return date.getTime();
+  // };
 
   const parseDateTime = (dateStr: string, timeStr: string) => {
-    const [time, modifier] = timeStr.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (modifier?.toLowerCase() === "pm" && hours < 12) hours += 12;
-    if (modifier?.toLowerCase() === "am" && hours === 12) hours = 0;
-    const date = new Date(dateStr);
-    date.setHours(hours, minutes, 0, 0);
+    if (!dateStr || !timeStr) return 0;
+
+    // Handles "10:38 AM", "10:38am", "10:38PM" etc.
+    const match = timeStr.match(/(\d+):(\d+)\s*(am|pm)/i);
+    if (!match) return 0;
+
+    let [, hoursStr, minutesStr, modifier] = match;
+    let hours = parseInt(hoursStr);
+    const minutes = parseInt(minutesStr);
+
+    if (modifier.toLowerCase() === "pm" && hours < 12) hours += 12;
+    if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+
+    // Split date components to avoid UTC/Local timezone confusion
+    const [year, month, day] = dateStr.split("-").map(Number);
+
+    // Create date using local time constructor
+    const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
     return date.getTime();
+  };
+
+  // For reservation equipments
+  const isTimeReached = (dateStr: string, timeStr: string) => {
+    const target = parseDateTime(dateStr, timeStr);
+    const now = new Date().getTime();
+    return now >= target;
+  };
+
+  const syncReservationsWithLogs = async () => {
+    if (reservations.length === 0) return;
+
+    for (const res of reservations) {
+      const startTimeEpoch = parseDateTime(res.date_from, res.time_in);
+      const endTimeEpoch = parseDateTime(res.date_to, res.time_out);
+      const now = new Date().getTime();
+
+      if (startTimeEpoch === 0 || endTimeEpoch === 0) continue;
+
+      // Phase 1: START TIME REACHED
+      // If it's time to start and the reservation is still "Pending"
+      if (
+        now >= startTimeEpoch &&
+        now < endTimeEpoch &&
+        res.status === "Pending"
+      ) {
+        console.log(`[Sync] Activating reservation: ${res.equipment_name}`);
+
+        // Update the reservation status so it stays in the DB but is marked as active
+        const { error: updateError } = await supabase
+          .from("equipment_reservations")
+          .update({ status: "In Progress" })
+          .eq("id", res.id);
+
+        if (!updateError) {
+          // Create the log entry to show it in the "Active Sessions" card
+          await supabase.from("equipment_logs").insert([
+            {
+              full_name: fullNameStr,
+              equipment_name: res.equipment_name,
+              model_name: res.model_name,
+              location: res.location,
+              date: res.date_from,
+              time_in: res.time_in,
+              status: "In Use",
+              reservation_id: res.id,
+            },
+          ]);
+
+          // Refresh UI
+          fetchReservations();
+          fetchActiveSessions();
+        }
+      }
+
+      // Phase 2: END TIME REACHED
+      // This is the ONLY place where the reservation should be deleted
+      if (now >= endTimeEpoch) {
+        console.log(
+          `[Sync] Cleaning up expired reservation: ${res.equipment_name}`,
+        );
+        const finalDuration = getFormattedDuration(
+          startTimeEpoch,
+          endTimeEpoch,
+        );
+
+        // Finalize the log record
+        await supabase
+          .from("equipment_logs")
+          .update({
+            status: "Completed",
+            time_out: res.time_out,
+            duration: finalDuration,
+          })
+          .eq("reservation_id", res.id);
+
+        // NOW we delete the reservation and return the stock
+        await returnEquipmentStock(res.equipment_name);
+        await supabase.from("equipment_reservations").delete().eq("id", res.id);
+
+        // Final UI Refresh
+        fetchReservations();
+        fetchInventory();
+        fetchActiveSessions();
+      }
+    }
   };
 
   const fetchActiveSessions = async () => {
@@ -296,12 +442,15 @@ export default function UserDashboard() {
   const fetchReservations = async () => {
     if (!fullNameStr || fullNameStr.includes("Unknown")) return;
     setLoadingReservations(true);
+
     const { data, error } = await supabase
       .from("equipment_reservations")
       .select("*")
       .ilike("full_name", `%${fullNameStr.trim()}%`)
-      .eq("status", "Pending")
+      // CHANGE: Fetch both Pending and In Progress so they stay in the list
+      .in("status", ["Pending", "In Progress"])
       .order("date_from", { ascending: true });
+
     if (error) console.error("Fetch Error:", error);
     else setReservations(data || []);
     setLoadingReservations(false);
@@ -530,22 +679,19 @@ export default function UserDashboard() {
 
   const handleCancelSession = async (session: any) => {
     setIsStoppingSession(true);
-    const start = parseDateTime(session.date, session.time_in);
-    const current = new Date().getTime();
-    const diffInMs = Math.max(0, current - start);
-    const diffInMinutes = diffInMs / (1000 * 60);
+    const startEpoch = parseDateTime(session.date, session.time_in);
+    const currentEpoch = new Date().getTime();
+    const diffInMinutes = (currentEpoch - startEpoch) / (1000 * 60);
     let statusTitle = "";
     let statusMsg = "";
 
     try {
-      if (diffInMinutes >= 2) {
+      if (session.reservation_id || diffInMinutes >= 2) {
         const timeOut = new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
-        const hours = Math.floor(diffInMinutes / 60);
-        const minutes = Math.floor(diffInMinutes % 60);
-        const finalDuration = `${hours}H ${minutes}M`;
+        const finalDuration = getFormattedDuration(startEpoch, currentEpoch);
         const { error } = await supabase
           .from("equipment_logs")
           .update({
@@ -613,30 +759,46 @@ export default function UserDashboard() {
     if (!reservationToDelete) return;
     setIsDeleting(true);
     try {
+      // 1. Delete associated equipment_logs if they exist
+      const { error: logError } = await supabase
+        .from("equipment_logs")
+        .delete()
+        .eq("reservation_id", reservationToDelete.id);
+
+      if (logError) console.error("Error deleting linked log:", logError);
+
+      // 2. Return Stock
       const { data: invData } = await supabase
         .from("equipment_inventory")
         .select("id, units")
         .eq("name", reservationToDelete.equipment_name)
         .single();
+
       if (invData) {
         await supabase
           .from("equipment_inventory")
           .update({ units: invData.units + 1 })
           .eq("id", invData.id);
       }
-      const { error } = await supabase
+
+      // 3. Delete the reservation itself
+      const { error: resError } = await supabase
         .from("equipment_reservations")
         .delete()
         .eq("id", reservationToDelete.id);
-      if (error) throw error;
-      setStatusConfig((prev) => ({
-        ...prev,
+
+      if (resError) throw resError;
+
+      setStatusConfig({
         visible: true,
-        title: "Reservation Deleted",
-        message: "The reservation has been cancelled and stock was returned.",
-      }));
+        title: "Reservation Cancelled",
+        message: "Reservation and any active logs have been removed.",
+        onCloseOverride: null,
+      });
+
       fetchReservations();
       fetchInventory();
+      fetchActiveSessions();
     } catch (error) {
       setStatusConfig((prev) => ({
         ...prev,
@@ -1188,24 +1350,40 @@ export default function UserDashboard() {
                     reservations.map((res) => (
                       <View
                         key={res.id}
-                        className="border-l-4 border-blue-500 bg-blue-50/50 p-3 rounded-r-lg mb-3 flex-row justify-between items-center"
+                        className={`border-l-4 p-3 rounded-r-lg mb-3 flex-row justify-between items-center ${
+                          res.status === "In Progress"
+                            ? "border-green-500 bg-green-50/50"
+                            : "border-blue-500 bg-blue-50/50"
+                        }`}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text
-                            style={{ fontSize: rf(16) }}
-                            className="font-inter-bold text-textPrimary-light"
-                            numberOfLines={1}
-                          >
-                            {res.equipment_name}
-                          </Text>
+                          <View className="flex-row items-center">
+                            <Text
+                              style={{ fontSize: rf(16) }}
+                              className="font-inter-bold text-textPrimary-light"
+                              numberOfLines={1}
+                            >
+                              {res.equipment_name}
+                            </Text>
+                            {/* ADD THIS STATUS BADGE */}
+                            {res.status === "In Progress" && (
+                              <View className="bg-green-600 px-2 py-0.5 rounded-full ml-2">
+                                <Text
+                                  style={{ fontSize: rf(10) }}
+                                  className="text-white font-inter-bold"
+                                >
+                                  ACTIVE
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
                           <View className="mt-1">
                             <Text
                               style={{ fontSize: rf(12) }}
                               className="text-textPrimary-light font-inter-bold"
                             >
-                              {res.date_from === res.date_to
-                                ? res.date_from
-                                : `${res.date_from} to ${res.date_to}`}
+                              {res.date_from}
                             </Text>
                             <Text
                               style={{ fontSize: rf(12) }}
@@ -1215,6 +1393,8 @@ export default function UserDashboard() {
                             </Text>
                           </View>
                         </View>
+
+                        {/* Only show delete button if it hasn't started yet, or keep it if you want to allow cancelling active sessions */}
                         <TouchableOpacity
                           onPress={() => handleDeletePress(res)}
                           className="bg-red-50 p-2 rounded-full"

@@ -61,6 +61,13 @@ export default function BookEquipmentModal({
   const rf = (size: number) => size * scale;
   const rs = (size: number) => size * scale;
 
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`; // Returns "2026-05-14" strictly
+  };
+
   // --- Fetch Inventory for Dropdown ---
   const fetchInventory = async () => {
     setIsInventoryLoading(true);
@@ -135,8 +142,8 @@ export default function BookEquipmentModal({
             full_name: userName,
             equipment_name: selectedEquipment.name,
             model_name: selectedEquipment.model_name,
-            date_from: startDate.toISOString().split("T")[0],
-            date_to: endDate.toISOString().split("T")[0],
+            date_from: formatLocalDate(startDate), // FIXED
+            date_to: formatLocalDate(endDate), // FIXED
             time_in: timeIn.toUpperCase(),
             time_out: timeOut.toUpperCase(),
             status: "Pending",
@@ -393,14 +400,63 @@ export default function BookEquipmentModal({
           visible={activePicker !== null}
           onClose={() => setActivePicker(null)}
           onSelect={(date) => {
+            // 1. Setup date comparison objects (stripping time for accuracy)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const selected = new Date(date);
+            selected.setHours(0, 0, 0, 0);
+
+            // 2. Logic for "DATE FROM" (Start Date)
             if (activePicker === "start") {
+              if (selected.getTime() !== today.getTime()) {
+                setStatusConfig({
+                  visible: true,
+                  title: "Invalid Start Date",
+                  message: "The starting date must be today.",
+                });
+                setActivePicker(null);
+                return;
+              }
               setStartDate(date);
-            } else {
+            }
+
+            // 3. Logic for "DATE TO" (End Date)
+            else if (activePicker === "end") {
+              // Check if selected date is in the past
+              if (selected.getTime() < today.getTime()) {
+                setStatusConfig({
+                  visible: true,
+                  title: "Invalid End Date",
+                  message: "You cannot select a date in the past.",
+                });
+                setActivePicker(null);
+                return;
+              }
+
+              // Check if "End Date" is earlier than "Start Date" (if start date exists)
+              if (startDate) {
+                const startCompare = new Date(startDate);
+                startCompare.setHours(0, 0, 0, 0);
+
+                if (selected.getTime() < startCompare.getTime()) {
+                  setStatusConfig({
+                    visible: true,
+                    title: "Date Conflict",
+                    message:
+                      "The 'Date To' cannot be earlier than your 'Date From'.",
+                  });
+                  setActivePicker(null);
+                  return;
+                }
+              }
               setEndDate(date);
             }
+
             setActivePicker(null);
           }}
           initialDate={activePicker === "start" ? startDate : endDate}
+          activePicker={activePicker}
         />
 
         <StatusModal
