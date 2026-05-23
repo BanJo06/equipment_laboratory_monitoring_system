@@ -68,6 +68,14 @@ export default function BookEquipmentModal({
     return `${year}-${month}-${day}`; // Returns "2026-05-14" strictly
   };
 
+  const formatDisplayDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   // --- Fetch Inventory for Dropdown ---
   const fetchInventory = async () => {
     setIsInventoryLoading(true);
@@ -308,7 +316,7 @@ export default function BookEquipmentModal({
                     style={{ fontSize: rf(14) }}
                     className="font-inter text-textPrimary-light"
                   >
-                    {startDate ? startDate.toLocaleDateString() : "Select"}
+                    {startDate ? formatDisplayDate(startDate) : "Select"}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -330,7 +338,7 @@ export default function BookEquipmentModal({
                     style={{ fontSize: rf(14) }}
                     className="font-inter text-textPrimary-light"
                   >
-                    {endDate ? endDate.toLocaleDateString() : "Select"}
+                    {endDate ? formatDisplayDate(endDate) : "Select"}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -409,16 +417,27 @@ export default function BookEquipmentModal({
 
             // 2. Logic for "DATE FROM" (Start Date)
             if (activePicker === "start") {
-              if (selected.getTime() !== today.getTime()) {
+              // FIXED: Allow today OR any future date. Only block the past.
+              if (selected.getTime() < today.getTime()) {
                 setStatusConfig({
                   visible: true,
                   title: "Invalid Start Date",
-                  message: "The starting date must be today.",
+                  message: "The starting date cannot be in the past.",
                 });
                 setActivePicker(null);
                 return;
               }
+
               setStartDate(date);
+
+              // Auto-reset "End Date" if the new "Start Date" is later than the current "End Date"
+              if (endDate) {
+                const endCompare = new Date(endDate);
+                endCompare.setHours(0, 0, 0, 0);
+                if (selected.getTime() > endCompare.getTime()) {
+                  setEndDate(null);
+                }
+              }
             }
 
             // 3. Logic for "DATE TO" (End Date)
@@ -434,7 +453,7 @@ export default function BookEquipmentModal({
                 return;
               }
 
-              // Check if "End Date" is earlier than "Start Date" (if start date exists)
+              // Check if "End Date" is earlier than "Start Date"
               if (startDate) {
                 const startCompare = new Date(startDate);
                 startCompare.setHours(0, 0, 0, 0);
