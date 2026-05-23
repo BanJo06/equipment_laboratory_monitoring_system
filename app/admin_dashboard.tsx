@@ -71,10 +71,12 @@ export default function AdminDashboard() {
 
     setIsLoggingOut(true);
 
+    // Added .eq("role", "Admin") to strictly target ONLY the Admin account
     const { error } = await supabase
       .from("accounts")
       .update({ isOnline: false })
-      .eq("id", adminId);
+      .eq("id", adminId)
+      .eq("role", "Admin");
 
     setIsLoggingOut(false);
     setIsLogoutModalVisible(false);
@@ -140,23 +142,24 @@ export default function AdminDashboard() {
 
   // --- INITIAL FETCH & REALTIME SUBSCRIPTION ---
   useEffect(() => {
+    if (!adminId) return;
+
     fetchAdminDetails();
     fetchInventory();
     fetchOnlineUsers();
 
-    // 1. SET ONLINE ON MOUNT
+    // Force the status to TRUE when the dashboard loads
     updateAdminStatus(true);
 
-    // 2. LIFECYCLE LISTENERS
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      updateAdminStatus(nextAppState === "active");
+      if (nextAppState === "active") {
+        updateAdminStatus(true);
+      }
     });
 
+    const handleBeforeUnload = () => updateAdminStatus(false);
     if (Platform.OS === "web") {
-      const handleBeforeUnload = () => updateAdminStatus(false);
       window.addEventListener("beforeunload", handleBeforeUnload);
-
-      // Add cleanup to the existing return
     }
 
     const accountsSubscription = supabase
@@ -170,11 +173,9 @@ export default function AdminDashboard() {
 
     return () => {
       subscription.remove();
-      updateAdminStatus(false);
+
       if (Platform.OS === "web") {
-        window.removeEventListener("beforeunload", () =>
-          updateAdminStatus(false),
-        );
+        window.removeEventListener("beforeunload", handleBeforeUnload);
       }
       supabase.removeChannel(accountsSubscription);
     };
