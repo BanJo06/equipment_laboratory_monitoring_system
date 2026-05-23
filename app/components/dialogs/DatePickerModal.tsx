@@ -1,30 +1,21 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
+import {
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 interface DatePickerModalProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (date: Date) => void;
-  initialDate: Date | null;
+  initialDate?: Date | null;
   activePicker: "start" | "end" | null;
 }
-
-const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 export default function DatePickerModal({
   visible,
@@ -33,163 +24,281 @@ export default function DatePickerModal({
   initialDate,
   activePicker,
 }: DatePickerModalProps) {
-  // State to track which month/year the user is currently viewing
-  const [viewDate, setViewDate] = useState(new Date());
+  const { width } = useWindowDimensions();
 
-  // Reset the view to the initialDate or today when the modal opens
+  // --- RESPONSIVE MATH ---
+  const isMobile = width < 1024;
+  const scale = isMobile ? Math.min(width / 430, 1) : Math.min(width / 1440, 1);
+  const rf = (size: number) => size * scale;
+  const rs = (size: number) => size * scale;
+
+  // --- CALENDAR STATE ---
+  const [viewDate, setViewDate] = useState(new Date());
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
   useEffect(() => {
     if (visible) {
-      setViewDate(initialDate ? new Date(initialDate) : new Date());
+      setViewDate(initialDate || new Date());
+      setShowYearPicker(false); // Reset to calendar view when opened
     }
   }, [visible, initialDate]);
 
-  // --- Date Math Utilities ---
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Strip time for accurate day comparison
+  const currentMonth = viewDate.getMonth();
+  const currentYear = viewDate.getFullYear();
 
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
+  // Generate a list of years (e.g., 2025 to 2030)
+  const yearsArray = Array.from({ length: 5 }, (_, i) => 2025 + i);
 
-  // Get total days in the current viewing month
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  // Get the day of the week the month starts on (0 = Sunday, 1 = Monday, etc.)
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  // --- CALENDAR LOGIC ---
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
 
-  // --- Handlers ---
+  const daysArray = [
+    ...Array(firstDayOfMonth).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   const handlePrevMonth = () => {
-    setViewDate(new Date(year, month - 1, 1));
+    setViewDate(new Date(currentYear, currentMonth - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setViewDate(new Date(year, month + 1, 1));
+    setViewDate(new Date(currentYear, currentMonth + 1, 1));
   };
 
-  const handleSelectDay = (day: number) => {
-    const selectedDate = new Date(year, month, day);
-    selectedDate.setHours(0, 0, 0, 0);
-    onSelect(selectedDate);
+  const handleDaySelect = (day: number) => {
+    const selected = new Date(currentYear, currentMonth, day);
+    onSelect(selected);
+    onClose();
   };
 
-  // --- Grid Generation ---
-  // Create empty slots for the days before the 1st of the month
-  const emptySlots = Array.from({ length: firstDayOfMonth }).map((_, i) => i);
-  // Create an array of days [1, 2, 3, ... daysInMonth]
-  const monthDays = Array.from({ length: daysInMonth }).map((_, i) => i + 1);
+  const handleYearSelect = (year: number) => {
+    setViewDate(new Date(year, currentMonth, 1));
+    setShowYearPicker(false);
+  };
 
   return (
     <Modal
-      visible={visible}
-      transparent
       animationType="fade"
+      transparent={true}
+      visible={visible}
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-xl">
-          {/* Header */}
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="font-inter-bold text-lg text-gray-800">
-              Select {activePicker === "start" ? "Start" : "End"} Date
+        <View
+          style={{ width: isMobile ? "100%" : 400, padding: rs(24) }}
+          className="bg-white rounded-xl shadow-lg"
+        >
+          {/* HEADER */}
+          <View className="flex-row justify-between items-center mb-6">
+            <Text
+              style={{ fontSize: rf(20) }}
+              className="font-inter-bold text-textPrimary-light"
+            >
+              {showYearPicker ? "Select Year" : "Select Date"}
             </Text>
-            <TouchableOpacity onPress={onClose} className="p-1">
-              <Feather name="x" size={24} color="#64748b" />
+            <TouchableOpacity onPress={onClose} style={{ padding: rs(4) }}>
+              <Feather name="x" size={rs(24)} color="#64748b" />
             </TouchableOpacity>
           </View>
 
-          {/* Month/Year Navigation */}
-          <View className="flex-row justify-between items-center mb-4">
+          {/* MONTH & YEAR NAVIGATION */}
+          <View className="flex-row justify-between items-center mb-4 px-2">
             <TouchableOpacity
               onPress={handlePrevMonth}
-              className="p-2 bg-gray-50 rounded-full"
+              style={{ padding: rs(8), opacity: showYearPicker ? 0 : 1 }}
+              disabled={showYearPicker}
             >
-              <Feather name="chevron-left" size={20} color="#334155" />
+              <Feather name="chevron-left" size={rs(24)} color="#1d4ed8" />
             </TouchableOpacity>
-            <Text className="font-inter-bold text-base text-gray-800">
-              {MONTHS[month]} {year}
-            </Text>
+
+            {/* Clickable Month/Year text to toggle Year Picker */}
+            <TouchableOpacity
+              onPress={() => setShowYearPicker(!showYearPicker)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: rs(4),
+              }}
+            >
+              <Text
+                style={{ fontSize: rf(16) }}
+                className="font-inter-bold text-textPrimary-light"
+              >
+                {monthNames[currentMonth]} {currentYear}
+              </Text>
+              <Feather
+                name={showYearPicker ? "chevron-up" : "chevron-down"}
+                size={rs(16)}
+                color="#1d4ed8"
+              />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleNextMonth}
-              className="p-2 bg-gray-50 rounded-full"
+              style={{ padding: rs(8), opacity: showYearPicker ? 0 : 1 }}
+              disabled={showYearPicker}
             >
-              <Feather name="chevron-right" size={20} color="#334155" />
+              <Feather name="chevron-right" size={rs(24)} color="#1d4ed8" />
             </TouchableOpacity>
           </View>
 
-          {/* Days of the Week Header */}
-          <View className="flex-row justify-between mb-2">
-            {DAYS_OF_WEEK.map((day) => (
-              <View key={day} className="flex-1 items-center">
-                <Text className="text-xs font-inter-semibold text-gray-400">
-                  {day}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Calendar Grid */}
-          <View className="flex-row flex-wrap">
-            {/* Render Empty Slots */}
-            {emptySlots.map((slot) => (
-              <View
-                key={`empty-${slot}`}
-                style={{ width: "14.28%", aspectRatio: 1 }}
-              />
-            ))}
-
-            {/* Render Actual Days */}
-            {monthDays.map((day) => {
-              const dateObj = new Date(year, month, day);
-              dateObj.setHours(0, 0, 0, 0);
-
-              // Core Logic: Disable if the date is before 'today'
-              const isPast = dateObj.getTime() < today.getTime();
-
-              // Check if this day is currently selected
-              const isSelected = initialDate
-                ? dateObj.getTime() ===
-                  new Date(initialDate).setHours(0, 0, 0, 0)
-                : false;
-
-              return (
-                <Pressable
-                  key={`day-${day}`}
-                  disabled={isPast}
-                  onPress={() => handleSelectDay(day)}
-                  style={{
-                    width: "14.28%", // 100% / 7 columns
-                    aspectRatio: 1,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 36,
-                      height: 36,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      borderRadius: 18,
-                      backgroundColor: isSelected ? "#1d4ed8" : "transparent",
-                      opacity: isPast ? 0.3 : 1, // Visually fade out past dates
-                    }}
-                  >
-                    <Text
+          {showYearPicker ? (
+            /* YEAR PICKER VIEW */
+            <View style={{ height: rs(260) }}>
+              <ScrollView showsVerticalScrollIndicator={true}>
+                <View className="flex-row flex-wrap">
+                  {yearsArray.map((year) => (
+                    <TouchableOpacity
+                      key={year}
+                      onPress={() => handleYearSelect(year)}
                       style={{
-                        color: isSelected
-                          ? "white"
-                          : isPast
-                            ? "#94a3b8"
-                            : "#1e293b",
-                        fontWeight: isSelected ? "bold" : "normal",
-                        textDecorationLine: isPast ? "line-through" : "none",
+                        width: "25%", // 4 columns
+                        paddingVertical: rs(12),
+                        alignItems: "center",
                       }}
                     >
-                      {day}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                      <View
+                        style={{
+                          backgroundColor:
+                            year === currentYear ? "#1d4ed8" : "transparent",
+                          paddingHorizontal: rs(12),
+                          paddingVertical: rs(6),
+                          borderRadius: 100,
+                        }}
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className={`font-inter ${
+                            year === currentYear
+                              ? "text-white font-inter-bold"
+                              : "text-textPrimary-light"
+                          }`}
+                        >
+                          {year}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ) : (
+            /* DAY PICKER VIEW (CALENDAR GRID) */
+            <View>
+              {/* WEEKDAYS */}
+              <View className="flex-row mb-2">
+                {weekDays.map((day) => (
+                  <Text
+                    key={day}
+                    style={{ flex: 1, textAlign: "center", fontSize: rf(14) }}
+                    className="font-inter-bold text-textSecondary-light"
+                  >
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* DAYS GRID */}
+              <View className="flex-row flex-wrap">
+                {daysArray.map((day, index) => {
+                  // 1. We move the date logic inside the 'day ?' block
+                  // to prevent errors on the null padding days.
+                  if (!day) {
+                    return (
+                      <View
+                        key={index}
+                        style={{ width: "14.28%", aspectRatio: 1 }}
+                      />
+                    );
+                  }
+
+                  const dateToCompare = new Date(
+                    currentYear,
+                    currentMonth,
+                    day,
+                  );
+                  dateToCompare.setHours(0, 0, 0, 0);
+
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+
+                  // 2. Logic Checks
+                  const isSelected =
+                    initialDate &&
+                    day === initialDate.getDate() &&
+                    currentMonth === initialDate.getMonth() &&
+                    currentYear === initialDate.getFullYear();
+
+                  const isPast = dateToCompare.getTime() < today.getTime();
+                  const isToday = dateToCompare.getTime() === today.getTime();
+
+                  // 3. Determine if the day should be interactive
+                  // CHANGED: Both "Date From" and "Date To" allow today or any future date.
+                  const isAllowed = !isPast;
+
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        width: "14.28%",
+                        aspectRatio: 1,
+                        padding: rs(2),
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => handleDaySelect(day)}
+                        // 4. Physical disable: Prevents clicking even if they ignore the opacity
+                        disabled={!isAllowed}
+                        style={{
+                          flex: 1,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderRadius: 100,
+                          backgroundColor: isSelected
+                            ? "#1d4ed8"
+                            : "transparent",
+                          borderWidth: isToday && !isSelected ? 1 : 0,
+                          borderColor: "#1d4ed8",
+                          // 5. Visual cue: Dim disallowed days
+                          opacity: isAllowed ? 1 : 0.3,
+                        }}
+                      >
+                        <Text
+                          style={{ fontSize: rf(14) }}
+                          className={`font-inter ${
+                            isSelected
+                              ? "text-white font-inter-bold"
+                              : isToday
+                                ? "text-blue-700 font-inter-bold"
+                                : "text-textPrimary-light"
+                          }`}
+                        >
+                          {day}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
