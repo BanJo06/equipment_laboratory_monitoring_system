@@ -665,6 +665,18 @@ export default function UserDashboard() {
       return;
     }
 
+    // If this session came from a reservation, delete the mirrored reservation
+    if (session.reservation_id) {
+      const { error: resError } = await supabase
+        .from("equipment_reservations")
+        .delete()
+        .eq("id", session.reservation_id);
+
+      if (resError) {
+        console.error("Error deleting mirrored reservation:", resError);
+      }
+    }
+
     await returnEquipmentStock(session.equipment_name);
     setStatusConfig((prev) => ({
       ...prev,
@@ -672,7 +684,10 @@ export default function UserDashboard() {
       title: "Session Stopped",
       message: "The session has been successfully stopped and recorded.",
     }));
+
+    // Refresh UI
     fetchActiveSessions();
+    fetchReservations();
     fetchInventory();
     setIsStoppingSession(false);
   };
@@ -714,6 +729,19 @@ export default function UserDashboard() {
         statusMsg =
           "Session cancelled within 2 minutes. The log was not recorded.";
       }
+
+      // If this session came from a reservation, delete the mirrored reservation
+      if (session.reservation_id) {
+        const { error: resError } = await supabase
+          .from("equipment_reservations")
+          .delete()
+          .eq("id", session.reservation_id);
+
+        if (resError) {
+          console.error("Error deleting mirrored reservation:", resError);
+        }
+      }
+
       await returnEquipmentStock(session.equipment_name);
       setStatusConfig((prev) => ({
         ...prev,
@@ -730,7 +758,9 @@ export default function UserDashboard() {
         message: "An error occurred while processing the cancellation.",
       }));
     } finally {
+      // Refresh UI
       fetchActiveSessions();
+      fetchReservations();
       fetchInventory();
       setIsStoppingSession(false);
     }
@@ -827,6 +857,19 @@ export default function UserDashboard() {
     minute: "2-digit",
     second: "2-digit",
   });
+
+  const formatReservationDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    // Split to avoid timezone shift issues (creates a local date)
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -1256,21 +1299,40 @@ export default function UserDashboard() {
                       >
                         <View className="flex-row justify-between items-start mb-2">
                           <View style={{ flex: 1 }}>
-                            <Text
-                              style={{ fontSize: rf(16) }}
-                              className="font-inter-bold text-textPrimary-light"
-                              numberOfLines={1}
+                            <View
+                              className="flex-row items-center flex-wrap"
+                              style={{ gap: rs(6) }}
                             >
-                              {session.equipment_name}
-                            </Text>
+                              <Text
+                                style={{ fontSize: rf(16) }}
+                                className="font-inter-bold text-textPrimary-light"
+                                numberOfLines={1}
+                              >
+                                {session.equipment_name}
+                              </Text>
+
+                              {/* NEW: Conditional Reservation Badge */}
+                              {session.reservation_id && (
+                                <View className="bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+                                  <Text
+                                    style={{ fontSize: rf(10) }}
+                                    className="text-blue-700 font-inter-bold"
+                                  >
+                                    Under reservation log
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+
                             <Text
                               style={{ fontSize: rf(12) }}
-                              className="text-textSecondary-light"
+                              className="text-textSecondary-light mt-1"
                             >
                               Started: {session.time_in}
                             </Text>
                           </View>
                         </View>
+
                         <View className="flex-row" style={{ gap: rs(8) }}>
                           <TouchableOpacity
                             onPress={() => handleOpenQRCode(session)}
@@ -1383,7 +1445,8 @@ export default function UserDashboard() {
                               style={{ fontSize: rf(12) }}
                               className="text-textPrimary-light font-inter-bold"
                             >
-                              {res.date_from}
+                              {formatReservationDate(res.date_from)} -{" "}
+                              {formatReservationDate(res.date_to)}
                             </Text>
                             <Text
                               style={{ fontSize: rf(12) }}

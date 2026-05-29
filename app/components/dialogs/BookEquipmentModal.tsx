@@ -384,8 +384,7 @@ export default function BookEquipmentModal({
               disabled={isLoading}
               style={{
                 paddingVertical: rs(16),
-                marginTop: rs(32),
-                marginBottom: rs(24),
+                marginTop: rs(24),
               }}
               className={`rounded-xl items-center justify-center ${isLoading ? "bg-blue-300" : "bg-mainColor-light"}`}
             >
