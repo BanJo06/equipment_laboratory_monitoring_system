@@ -35,6 +35,9 @@ export default function Accounts() {
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   const [isFetching, setIsFetching] = useState(true);
 
   const isMobile = width < 1024;
@@ -95,9 +98,29 @@ export default function Accounts() {
     setModalVisible(true);
   };
 
-  const confirmDelete = (id: string) => {
+  const confirmDelete = (account: any) => {
     setActiveDropdown(null);
-    setAccountToDelete(id);
+
+    // 1. Block deletion if the account is currently online
+    if (account.isOnline) {
+      setErrorMessage("Can't be deleted. This account is online right now");
+      setErrorModalVisible(true);
+      return;
+    }
+
+    // 2. Block deletion if it is the last remaining admin account
+    if (account.role === "admin") {
+      const adminCount = accountsList.filter((a) => a.role === "admin").length;
+
+      if (adminCount <= 1) {
+        setErrorMessage("Can't be deleted, this the main admin account");
+        setErrorModalVisible(true);
+        return;
+      }
+    }
+
+    // 3. Proceed to confirmation modal if all checks pass
+    setAccountToDelete(account.id);
     setDeleteModalVisible(true);
   };
 
@@ -106,17 +129,51 @@ export default function Accounts() {
 
     setIsDeleting(true);
     try {
+      // 1. Fetch the account to get their full name for the logs query
+      const { data: accountData, error: accountError } = await supabase
+        .from("accounts")
+        .select("first_name, last_name")
+        .eq("id", accountToDelete)
+        .single();
+
+      if (accountError) throw new Error(accountError.message);
+
+      const fullName =
+        `${accountData.first_name} ${accountData.last_name}`.trim();
+
+      // 2. Check for active equipment logs under this user's name
+      const { data: activeLogs, error: logsError } = await supabase
+        .from("equipment_logs")
+        .select("id")
+        .eq("full_name", fullName)
+        .eq("status", "In Use"); // Checking for active logs
+
+      if (logsError) throw new Error(logsError.message);
+
+      // 3. If active logs exist, block deletion and show error
+      if (activeLogs && activeLogs.length > 0) {
+        setDeleteModalVisible(false); // Close the confirm modal
+        setErrorMessage(
+          "This account has an active equipment logs in this moment. Please stop all the equipment logs before deleting this account",
+        );
+        setErrorModalVisible(true); // Open the error modal
+        return; // Abort the deletion
+      }
+
+      // 4. Proceed to delete if no active logs are found
       const { error } = await supabase
         .from("accounts")
         .delete()
         .eq("id", accountToDelete);
+
       if (error) throw new Error(error.message);
 
       fetchAccounts(false);
       setDeleteModalVisible(false);
       setSuccessModalVisible(true);
-    } catch (error) {
-      Alert.alert("Error", "Failed to delete account.");
+    } catch (error: any) {
+      setDeleteModalVisible(false);
+      Alert.alert("Error", error.message || "Failed to delete account.");
     } finally {
       setIsDeleting(false);
       setAccountToDelete(null);
@@ -158,6 +215,13 @@ export default function Accounts() {
         title="Success"
         message="This account is deleted."
         onClose={() => setSuccessModalVisible(false)}
+      />
+
+      <StatusModal
+        visible={errorModalVisible}
+        title="Error! Action Denied"
+        message={errorMessage}
+        onClose={() => setErrorModalVisible(false)}
       />
 
       <AccountsHelpModal
@@ -415,7 +479,7 @@ export default function Accounts() {
 
                           <TouchableOpacity
                             style={{ padding: rs(10) }}
-                            onPress={() => confirmDelete(item.id)}
+                            onPress={() => confirmDelete(item)}
                           >
                             <Text
                               style={{ fontSize: rf(14) }}
