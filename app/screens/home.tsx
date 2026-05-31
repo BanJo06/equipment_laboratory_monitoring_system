@@ -185,7 +185,7 @@ export default function Home() {
       </View>
 
       {/* DYNAMIC SCROLLABLE CONTAINER */}
-      <View style={{ maxHeight: rs(708), overflow: "hidden" }}>
+      <View style={{ height: rs(708), overflow: "hidden" }}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: rs(8), flexGrow: 1 }} // flexGrow helps center items if height is large
           nestedScrollEnabled={true}
@@ -195,7 +195,7 @@ export default function Home() {
             // CHANGED: Wrapped loader in a view with height and centered it
             <View
               style={{
-                minHeight: rs(708),
+                flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
               }}
@@ -206,7 +206,7 @@ export default function Home() {
             // CHANGED: Wrapped empty state text in a view with height and centered it
             <View
               style={{
-                minHeight: rs(708),
+                flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
               }}

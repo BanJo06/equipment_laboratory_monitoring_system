@@ -133,7 +133,7 @@ export default function Index() {
       setModalConfig({
         visible: true,
         title: "Logout Success",
-        message: `Successfully logged out equipment: ${logData.equipment_name}`,
+        message: `Successfully logged out equipment: ${logData.equipment_name}\nUser: ${logData.full_name}`,
       });
     } catch (err: any) {
       setModalConfig({
