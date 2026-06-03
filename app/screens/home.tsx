@@ -65,18 +65,18 @@ export default function Home() {
 
     const [year, month, day] = dateStr.split("-");
     const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
+      "Jan.",
+      "Feb.",
+      "Mar.",
+      "Apr.",
       "May",
       "June",
       "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "Aug.",
+      "Sept.",
+      "Oct.",
+      "Nov.",
+      "Dec.",
     ];
 
     // Subtract 1 from month because arrays start at 0
@@ -128,7 +128,9 @@ export default function Home() {
           equipment_name: res.equipment_name,
           model_name: res.model_name,
           time_in: res.time_in,
-          date_from: res.date_from, // Passed the date to display it
+          time_out: res.time_out,
+          date_from: res.date_from,
+          date_to: res.date_to,
           created_at: res.created_at,
           isReservation: true,
           isPending: true,
@@ -362,11 +364,9 @@ export default function Home() {
                             style={{ fontSize: rf(14) }}
                             className="text-slate-500 font-inter ml-2"
                           >
-                            {/* ADDED DATE DISPLAY SO ADMIN KNOWS IT IS FOR THE FUTURE */}
                             {eq.isPending
-                              ? `${formatDisplayDate(eq.date_from)} at`
+                              ? `${formatDisplayDate(eq.date_from)} at ${eq.time_in} ${eq.date_from !== eq.date_to ? ` - ${formatDisplayDate(eq.date_to)}` : ""} at ${eq.time_out}`
                               : "Started:"}{" "}
-                            {eq.time_in} to {eq.time_out}
                           </Text>
                         </View>
 
