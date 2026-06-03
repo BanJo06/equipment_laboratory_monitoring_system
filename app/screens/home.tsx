@@ -63,39 +63,76 @@ export default function Home() {
   // --- DATA FETCHING & GROUPING ---
   const fetchActiveSessions = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("equipment_logs")
-      .select("*")
-      .eq("status", "In Use")
-      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching active sessions:", error);
-      setLoading(false);
-      return;
+    // Fetch both Active Logs AND Pending Reservations concurrently
+    const [logsResponse, reservationsResponse] = await Promise.all([
+      supabase
+        .from("equipment_logs")
+        .select("*")
+        .eq("status", "In Use")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("equipment_reservations")
+        .select("*")
+        .eq("status", "Pending"), // Removed the date filter so ALL pending reservations show
+    ]);
+
+    if (logsResponse.error)
+      console.error("Error fetching logs:", logsResponse.error);
+    if (reservationsResponse.error)
+      console.error("Error fetching reservations:", reservationsResponse.error);
+
+    const allItems: any[] = [];
+
+    // 1. Add Active Logs
+    if (logsResponse.data) {
+      logsResponse.data.forEach((log) => {
+        allItems.push({
+          ...log,
+          full_name: log.full_name?.trim(),
+          isReservation: !!log.reservation_id,
+          isPending: false,
+        });
+      });
     }
 
-    if (data) {
-      setTotalActiveEquipments(data.length);
-
-      const grouped = data.reduce((acc: GroupedSession[], log: any) => {
-        const existingUser = acc.find(
-          (user) => user.full_name === log.full_name,
-        );
-        if (existingUser) {
-          existingUser.equipments.push(log);
-        } else {
-          acc.push({
-            full_name: log.full_name,
-            initials: getInitials(log.full_name),
-            equipments: [log],
-          });
-        }
-        return acc;
-      }, []);
-
-      setGroupedSessions(grouped);
+    // 2. Add Pending Reservations
+    if (reservationsResponse.data) {
+      reservationsResponse.data.forEach((res) => {
+        allItems.push({
+          id: res.id,
+          full_name: res.full_name?.trim(),
+          equipment_name: res.equipment_name,
+          model_name: res.model_name,
+          time_in: res.time_in,
+          date_from: res.date_from, // Passed the date to display it
+          created_at: res.created_at,
+          isReservation: true,
+          isPending: true,
+        });
+      });
     }
+
+    setTotalActiveEquipments(allItems.length);
+
+    // Group everything by the user's name
+    const grouped = allItems.reduce((acc: GroupedSession[], item: any) => {
+      const existingUser = acc.find(
+        (user) => user.full_name === item.full_name,
+      );
+      if (existingUser) {
+        existingUser.equipments.push(item);
+      } else {
+        acc.push({
+          full_name: item.full_name,
+          initials: getInitials(item.full_name),
+          equipments: [item],
+        });
+      }
+      return acc;
+    }, []);
+
+    setGroupedSessions(grouped);
     setLoading(false);
   };
 
@@ -107,24 +144,30 @@ export default function Home() {
       setCurrentTime(new Date());
     }, 1000);
 
+    // Listen to Active Logs
     const logsSubscription = supabase
       .channel("active-sessions-channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "equipment_logs",
-        },
-        () => {
-          fetchActiveSessions();
-        },
+        { event: "*", schema: "public", table: "equipment_logs" },
+        () => fetchActiveSessions(),
+      )
+      .subscribe();
+
+    // Listen to Pending Reservations
+    const resSubscription = supabase
+      .channel("pending-reservations-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "equipment_reservations" },
+        () => fetchActiveSessions(),
       )
       .subscribe();
 
     return () => {
       clearInterval(timer);
       supabase.removeChannel(logsSubscription);
+      supabase.removeChannel(resSubscription);
     };
   }, []);
 
@@ -136,7 +179,6 @@ export default function Home() {
         paddingTop: rs(32),
         paddingHorizontal: rs(32),
         paddingBottom: rs(24),
-        // CHANGED: Keep card height substantial across all devices
         minHeight: rs(450),
       }}
       className="bg-white rounded-lg shadow-sm"
@@ -175,7 +217,7 @@ export default function Home() {
               className="font-inter text-textSecondary-light"
             >
               {totalActiveEquipments}{" "}
-              {totalActiveEquipments === 1 ? "equipment" : "equipments"} in use
+              {totalActiveEquipments === 1 ? "equipment" : "equipments"} tracked
             </Text>
           </View>
         </View>
@@ -187,12 +229,11 @@ export default function Home() {
       {/* DYNAMIC SCROLLABLE CONTAINER */}
       <View style={{ height: rs(708), overflow: "hidden" }}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: rs(8), flexGrow: 1 }} // flexGrow helps center items if height is large
+          contentContainerStyle={{ paddingBottom: rs(8), flexGrow: 1 }}
           nestedScrollEnabled={true}
           showsVerticalScrollIndicator={true}
         >
           {loading ? (
-            // CHANGED: Wrapped loader in a view with height and centered it
             <View
               style={{
                 flex: 1,
@@ -203,7 +244,6 @@ export default function Home() {
               <ActivityIndicator size="large" color="#1d4ed8" />
             </View>
           ) : groupedSessions.length === 0 ? (
-            // CHANGED: Wrapped empty state text in a view with height and centered it
             <View
               style={{
                 flex: 1,
@@ -238,19 +278,23 @@ export default function Home() {
                   </Text>
                 </View>
 
-                {/* User's Active Equipment(s) */}
+                {/* User's Active/Reserved Equipment(s) */}
                 <View style={{ gap: rs(12) }}>
                   {userSession.equipments.map((eq) => (
                     <View
                       key={eq.id}
                       style={{ padding: rs(16) }}
-                      className="bg-white rounded-lg border border-gray-200 shadow-sm"
+                      className={`rounded-lg border shadow-sm ${
+                        eq.isPending
+                          ? "bg-amber-50 border-amber-200"
+                          : "bg-white border-gray-200"
+                      }`}
                     >
                       <View className="flex-row items-center mb-3">
                         <MaterialCommunityIcons
                           name="flask"
                           size={rs(20)}
-                          color="#1d4ed8"
+                          color={eq.isPending ? "#b45309" : "#1d4ed8"}
                         />
                         <Text
                           style={{ fontSize: rf(16) }}
@@ -259,6 +303,26 @@ export default function Home() {
                           {eq.equipment_name}{" "}
                           {eq.model_name ? `- ${eq.model_name}` : ""}
                         </Text>
+
+                        {/* Status Badge */}
+                        {eq.isReservation && (
+                          <View
+                            className={`px-2 py-1 rounded-full ml-2 ${
+                              eq.isPending ? "bg-amber-200" : "bg-purple-100"
+                            }`}
+                          >
+                            <Text
+                              style={{ fontSize: rf(10) }}
+                              className={`font-inter-bold ${
+                                eq.isPending
+                                  ? "text-amber-800"
+                                  : "text-purple-700"
+                              }`}
+                            >
+                              {eq.isPending ? "UPCOMING" : "RESERVED"}
+                            </Text>
+                          </View>
+                        )}
                       </View>
 
                       <View
@@ -275,23 +339,33 @@ export default function Home() {
                             style={{ fontSize: rf(14) }}
                             className="text-slate-500 font-inter ml-2"
                           >
-                            Started: {eq.time_in}
+                            {/* ADDED DATE DISPLAY SO ADMIN KNOWS IT IS FOR THE FUTURE */}
+                            {eq.isPending ? `${eq.date_from} at` : "Started:"}{" "}
+                            {eq.time_in}
                           </Text>
                         </View>
 
-                        {/* Live Duration Pill */}
+                        {/* Live Duration Pill or Waiting Message */}
                         <View
                           style={{
                             paddingHorizontal: rs(12),
                             paddingVertical: rs(4),
                           }}
-                          className="bg-blue-50 rounded-md border border-blue-100"
+                          className={`rounded-md border ${
+                            eq.isPending
+                              ? "bg-amber-100 border-amber-200"
+                              : "bg-blue-50 border-blue-100"
+                          }`}
                         >
                           <Text
                             style={{ fontSize: rf(14) }}
-                            className="text-blue-700 font-inter-bold"
+                            className={`font-inter-bold ${
+                              eq.isPending ? "text-amber-700" : "text-blue-700"
+                            }`}
                           >
-                            {getLiveDuration(eq.created_at)}
+                            {eq.isPending
+                              ? "Reserved Equipment"
+                              : getLiveDuration(eq.created_at)}
                           </Text>
                         </View>
                       </View>

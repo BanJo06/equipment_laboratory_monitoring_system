@@ -318,7 +318,7 @@ export default function Index() {
           className="bg-card-light shadow-lg"
         >
           <View className="items-center">
-            <View style={{ marginTop: 40, marginBottom: 16 }}>
+            <View style={{ marginTop: 24, marginBottom: 16 }}>
               <SVG_ICONS.LogIn size={64} />
             </View>
             <View style={{ gap: 8 }} className="items-center">
@@ -339,8 +339,8 @@ export default function Index() {
 
           <View
             style={{
-              marginTop: isMobile ? 60 : 96,
-              marginBottom: isMobile ? 60 : 98,
+              marginTop: isMobile ? 56 : 88,
+              marginBottom: isMobile ? 56 : 88,
               marginHorizontal: 16,
             }}
           >
