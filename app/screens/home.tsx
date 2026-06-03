@@ -366,7 +366,7 @@ export default function Home() {
                             {eq.isPending
                               ? `${formatDisplayDate(eq.date_from)} at`
                               : "Started:"}{" "}
-                            {eq.time_in}
+                            {eq.time_in} to {eq.time_out}
                           </Text>
                         </View>
 
