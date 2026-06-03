@@ -117,6 +117,17 @@ export default function Index() {
 
       if (updateError) throw updateError;
 
+      if (logData.reservation_id) {
+        const { error: resError } = await supabase
+          .from("equipment_reservations")
+          .delete()
+          .eq("id", logData.reservation_id);
+
+        if (resError) {
+          console.error("Error deleting mirrored reservation:", resError);
+        }
+      }
+
       const { data: eqData } = await supabase
         .from("equipment_inventory")
         .select("units")
@@ -315,7 +326,7 @@ export default function Index() {
                 style={{ fontSize: rf(34) }}
                 className="font-inter-bold text-center text-textPrimary-light"
               >
-                Lab Equipment Monitor
+                HPRS Laboratory Reservation System
               </Text>
               <Text
                 style={{ fontSize: rf(16) }}
