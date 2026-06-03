@@ -712,7 +712,7 @@ export default function UserDashboard() {
           .update({
             time_out: timeOut,
             duration: finalDuration,
-            status: "completed",
+            status: "Completed",
           })
           .eq("id", session.id);
         if (error) throw error;

@@ -60,6 +60,29 @@ export default function Home() {
     return `${hours}h ${minutes}m ${seconds}s`;
   };
 
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return "";
+
+    const [year, month, day] = dateStr.split("-");
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    // Subtract 1 from month because arrays start at 0
+    return `${monthNames[parseInt(month) - 1]} ${day}, ${year}`;
+  };
+
   // --- DATA FETCHING & GROUPING ---
   const fetchActiveSessions = async () => {
     setLoading(true);
@@ -340,7 +363,9 @@ export default function Home() {
                             className="text-slate-500 font-inter ml-2"
                           >
                             {/* ADDED DATE DISPLAY SO ADMIN KNOWS IT IS FOR THE FUTURE */}
-                            {eq.isPending ? `${eq.date_from} at` : "Started:"}{" "}
+                            {eq.isPending
+                              ? `${formatDisplayDate(eq.date_from)} at`
+                              : "Started:"}{" "}
                             {eq.time_in}
                           </Text>
                         </View>
