@@ -27,6 +27,7 @@ import QRCodeModal from "./components/dialogs/QRCodeModal";
 import StartSessionHelpModal from "./components/dialogs/StartSessionHelpModal";
 import StatusModal from "./components/dialogs/StatusModal";
 import StopSessionConfirmationModal from "./components/dialogs/StopSessionConfirmationModal";
+import StopSessionRemarksModal from "./components/dialogs/StopSessionRemarksModal";
 import UserActiveSessionsHelpModal from "./components/dialogs/UserActiveSessionsHelpModal";
 
 export default function UserDashboard() {
@@ -45,6 +46,7 @@ export default function UserDashboard() {
     message: "",
     mode: "stop" as "stop" | "cancel",
     session: null as any,
+    remarks: "",
   });
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrSessionData, setQrSessionData] = useState<{
@@ -53,6 +55,8 @@ export default function UserDashboard() {
     model_name: string | null;
     location: string;
   } | null>(null);
+  const [isRemarksModalVisible, setRemarksModalVisible] = useState(false);
+  const [sessionForRemarks, setSessionForRemarks] = useState<any>(null);
   const [startHelpVisible, setStartHelpVisible] = useState(false);
   const [activeHelpVisible, setActiveHelpVisible] = useState(false);
   const [reservations, setReservations] = useState<any[]>([]);
@@ -261,27 +265,6 @@ export default function UserDashboard() {
     return `${hours}H ${minutes}M`;
   };
 
-  // useEffect(() => {
-  //   const timer = setInterval(() => {
-  //     setCurrentTime(new Date());
-  //   }, 1000);
-  //   return () => clearInterval(timer);
-  // }, []);
-
-  // useEffect(() => {
-  //   const timer = setInterval(() => {
-  //     const now = new Date();
-  //     setCurrentTime(now);
-
-  //     // Trigger sync every minute (when seconds are 0)
-  //     // to prevent excessive DB calls while maintaining accuracy
-  //     if (now.getSeconds() === 0) {
-  //       syncReservationsWithLogs();
-  //     }
-  //   }, 1000);
-  //   return () => clearInterval(timer);
-  // }, [reservations]); // Add reservations as dependency
-
   const lastSyncRef = useRef<number>(0);
 
   useEffect(() => {
@@ -298,16 +281,6 @@ export default function UserDashboard() {
 
     return () => clearInterval(timer);
   }, [reservations]);
-
-  // const parseDateTime = (dateStr: string, timeStr: string) => {
-  //   const [time, modifier] = timeStr.split(" ");
-  //   let [hours, minutes] = time.split(":").map(Number);
-  //   if (modifier?.toLowerCase() === "pm" && hours < 12) hours += 12;
-  //   if (modifier?.toLowerCase() === "am" && hours === 12) hours = 0;
-  //   const date = new Date(dateStr);
-  //   date.setHours(hours, minutes, 0, 0);
-  //   return date.getTime();
-  // };
 
   const parseDateTime = (dateStr: string, timeStr: string) => {
     if (!dateStr || !timeStr) return 0;
@@ -609,29 +582,25 @@ export default function UserDashboard() {
           "Are you sure to cancel this equipment? Usage was less than 2 minutes.",
         mode: "cancel",
         session: session,
+        remarks: "",
       });
     } else {
-      setStopModalConfig({
-        visible: true,
-        title: "Stop Session?",
-        message: "Are you sure you want to stop this session?",
-        mode: "stop",
-        session: session,
-      });
+      setSessionForRemarks(session);
+      setRemarksModalVisible(true);
     }
   };
 
   const confirmStopAction = async () => {
-    const { mode, session } = stopModalConfig;
+    const { mode, session, remarks } = stopModalConfig;
     setStopModalConfig((prev) => ({ ...prev, visible: false }));
     if (mode === "cancel") {
       await handleCancelSession(session);
     } else {
-      await handleStopSession(session);
+      await handleStopSession(session, remarks);
     }
   };
 
-  const handleStopSession = async (session: any) => {
+  const handleStopSession = async (session: any, remarks: string) => {
     setIsStoppingSession(true);
     const timeOut = new Date().toLocaleTimeString([], {
       hour: "2-digit",
@@ -650,6 +619,7 @@ export default function UserDashboard() {
         time_out: timeOut,
         duration: finalDuration,
         status: "Completed",
+        remarks: remarks,
       })
       .eq("id", session.id);
 
@@ -899,6 +869,26 @@ export default function UserDashboard() {
         }
         onConfirm={confirmStopAction}
         isStopping={isStoppingSession}
+      />
+      <StopSessionRemarksModal
+        visible={isRemarksModalVisible}
+        onClose={() => setRemarksModalVisible(false)}
+        onConfirm={(remarks) => {
+          // 1. Close Remarks Modal
+          setRemarksModalVisible(false);
+
+          // 2. Open the Final Confirmation Modal
+          setStopModalConfig({
+            visible: true,
+            title: "Stop Session?",
+            message: "Are you sure you want to stop this session?",
+            mode: "stop",
+            session: sessionForRemarks,
+            remarks: remarks, // Store the remarks they just typed
+          });
+        }}
+        session={sessionForRemarks}
+        isStopping={false}
       />
       <StartSessionHelpModal
         visible={startHelpVisible}

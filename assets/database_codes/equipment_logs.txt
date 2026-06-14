@@ -14,6 +14,9 @@ CREATE TABLE public.equipment_logs (
 ALTER TABLE public.equipment_logs ADD COLUMN status TEXT DEFAULT 'active';
 ALTER TABLE public.equipment_logs ADD COLUMN model_name TEXT;
 ALTER TABLE public.equipment_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.equipment_logs ADD COLUMN reservation_id UUID NULL;
+ALTER TABLE equipment_logs 
+ADD COLUMN remarks TEXT;
 
 
 
@@ -29,3 +32,17 @@ CREATE POLICY "Allow public update access" ON public.equipment_logs
 
 CREATE POLICY "Allow public delete access" ON public.equipment_logs 
     FOR DELETE USING (true);
+
+
+
+
+To ensure your database is strictly aligned with your app's logic, you can add a Check Constraint. This acts as a guardrail, ensuring that only the specific status strings you've defined can ever be saved to that column.
+
+-- First, if there's an old constraint, we drop it (optional, but safe)
+ALTER TABLE public.equipment_reservations 
+DROP CONSTRAINT IF EXISTS equipment_reservations_status_check;
+
+-- Now, add the constraint to allow only these specific values
+ALTER TABLE public.equipment_reservations 
+ADD CONSTRAINT equipment_reservations_status_check 
+CHECK (status IN ('Pending', 'In Progress', 'Completed', 'Cancelled'));
